@@ -29,6 +29,10 @@ def consultar_artigos(categoria, pergunta_usuario, e_primeira_msg=False):
         "saudaveis": {
             "plano_A": "Mudas identificadas como saudáveis. O ciclo de irrigação automática continua ativo. Fonte: [Manejo Hidrico do Açaí](https://embrapa.br).",
             "plano_B": "Tudo certo com as plantas. Continue acompanhando os relatórios gerados automaticamente pela ESP32."
+        },
+        "gafanhoto": {
+            "plano_A":
+            "plano_B":
         }
     }
     
