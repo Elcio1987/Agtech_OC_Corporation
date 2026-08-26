@@ -29,7 +29,12 @@ def consultar_artigos(categoria, pergunta_usuario, e_primeira_msg=False):
         "saudaveis": {
             "plano_A": "Mudas identificadas como saudáveis. O ciclo de irrigação automática continua ativo. Fonte: [Manejo Hidrico do Açaí](https://embrapa.br).",
             "plano_B": "Tudo certo com as plantas. Continue acompanhando os relatórios gerados automaticamente pela ESP32."
-        }
+        },
+             "pulgoes": {
+         "plano_A": "Aplicação de calda de sabão neutro a 1% diluída em água morna, borrifando no início da manhã. Fonte: [Notas Técnicas Embrapa].",
+         "plano_B": "Caso a calda de sabão não resolva, os artigos científicos recomendam a introdução de predadores naturais (como joaninhas). Fonte: [Defesa Agroecológica]."
+     }
+
     }
     
     # 1. Se for o alerta inicial disparado pela câmera (Entrega o Plano A automaticamente)
@@ -66,7 +71,7 @@ Entendido. Como a primeira ação recomendada não resolveu o problema no campo,
 # --- INTERFACE GRÁFICA ---
 
 st.info("📢 **Status do Sensor:** Monitorando área do produtor cadastrado.")
-categoria_simulada = st.selectbox("Simular Registro da Câmera (Para Testes):", ["saudaveis", "doentes", "capivaras", "gafanhotos"], index=1)
+categoria_simulada = st.selectbox("Simular Registro da Câmera (Para Testes):", ["saudaveis", "doentes", "capivaras", "gafanhotos", "pulgoes"], index=1)
 
 # Inicializa a tela com o diagnóstico automático e a primeira solução (Plano A)
 if len(st.session_state.historico_chat) == 0:
