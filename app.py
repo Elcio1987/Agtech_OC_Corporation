@@ -9,8 +9,8 @@ st.title("🌱 AgTech - Consultor Agroflorestal")
 st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Gemini API)")
 
 # --- CONFIGURAÇÃO DA CHAVE DO GEMINI REAL ---
-# Sua chave de API oficial do Google AI Studio atualizada inserida com sucesso
-GOOGLE_API_KEY = "AQ.Ab8RN6K189zHeh_cK_F78wLHa0aMnjCjRlMaG2wCpvQbrPtiXw"
+# Sua nova chave limpa e isolada gerada com sucesso no Google AI Studio
+GOOGLE_API_KEY = "AQ.Ab8RN6IbvLefaj3Kc3AJCQ5OsIHCnjEMNaNnAa3CT6Orwtt7qQ"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # Inicializa o histórico de conversa na memória se não existir
@@ -43,8 +43,8 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
     if st.button("🔍 Enviar Foto para Diagnóstico Real", type="primary"):
         with st.spinner("Analisando imagem com a base científica..."):
             try:
-                # Aciona o modelo atualizado compatível com chaves AQ.Ab
-                model = genai.GenerativeModel('gemini-2.5-flash')
+                # Aciona o modelo de visão rápido e avançado do Google
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 # Monta a pergunta estruturada unindo a imagem aos critérios de negócio
                 pergunta = [CONTEXTO_CIENTIFICO, "Analise esta foto tirada do viveiro de açaí e gere o relatório completo estruturado de acordo com as suas diretrizes.", imagem_real]
@@ -64,7 +64,7 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
 # --- DESIGN DA LINHA DO TEMPO DO CHAT FLUIDO ---
 if st.session_state.historico_chat:
     st.markdown("---")
-    st.write("💬 **Line de Atendimento:**")
+    st.write("💬 **Linha de Atendimento:**")
     
     for msg in st.session_state.historico_chat:
         with st.chat_message(msg["autor"]):
@@ -74,11 +74,11 @@ if st.session_state.historico_chat:
 
     # Campo de Chat contínuo para o produtor continuar tirando dúvidas sobre a mesma ocorrência
     if pergunta_complementar := st.chat_input("Continue a conversa com a IA dos artigos técnicos..."):
-        st.session_state.historico_chat.append({"autor": "user", "texto": pergunta_complementar})
+        st.session_state.historico_chat.append({"autor": "user", "telefone": pergunta_complementar})
         
         with st.spinner("Buscando informações complementares..."):
             try:
-                model = genai.GenerativeModel('gemini-2.5-flash')
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 # Para manter o contexto da conversa vivo, passamos o histórico básico no prompt
                 historico_texto = "\n".join([f"{m['autor']}: {m['texto']}" for m in st.session_state.historico_chat[:-1]])
