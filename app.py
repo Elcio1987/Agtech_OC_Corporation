@@ -1,19 +1,20 @@
 import streamlit as st
-from google import genai
-from google.genai import types
+from groq import Groq
 from PIL import Image
+import io
+import base64
 
 # Configura o design do aplicativo móvel da sua AgTech
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Gemini v1 API)")
+st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama 3.2 & Groq)")
 
-# --- CONFIGURAÇÃO DA CHAVE DO GEMINI ATUALIZADA ---
-# Utilizando a sua chave AQ.Ab com o cliente correto para evitar o erro 401
-GOOGLE_API_KEY = "AQ.Ab8RN6lbvLefaj3Kc3AJCQ5OslHCnjEMNaNnAa3CT6Orwtt7qQ"
+# --- CONFIGURAÇÃO DA CHAVE DO GROQ COM CUSTO ZERO ---
+# Cole aqui a sua nova chave gsk_ copiada do site console.groq.com
+GROQ_API_KEY = "COLE_AQUI_A_SUA_CHAVE_GSK"
 
-# Inicializa o histórico de conversa na memória se não existir
+# Inicializa o histórico de conversa na memória do celular do produtor se não existir
 if "historico_chat" not in st.session_state:
     st.session_state.historico_chat = []
 
@@ -30,6 +31,13 @@ Diretrizes obrigatórias de resposta:
 5. Se o produtor disser que já fez uma medida e não funcionou, mude a abordagem técnica imediatamente e sugere o 'Plano B' de contingência biológica ou isolamento das mudas.
 """
 
+# Função para converter a imagem enviada para Base64 exigida pela API de visão
+def converter_imagem_para_base64(uploaded_file):
+    image = Image.open(uploaded_file)
+    buffered = io.BytesIO()
+    image.convert("RGB").save(buffered, format="JPEG", quality=80)
+    return base64.b64encode(buffered.getvalue()).decode('utf-8')
+
 # --- INTERFACE DO APLICATIVO REAL ---
 
 st.info("🔄 **Central Ativa:** Aguardando fotos do campo ou comandos da ESP32.")
@@ -38,29 +46,44 @@ st.info("🔄 **Central Ativa:** Aguardando fotos do campo ou comandos da ESP32.
 foto_uploadeada = st.file_uploader("📸 Notou algo estranho ou tem uma dúvida? Insira a foto do celular aqui:", type=["jpg", "jpeg", "png"])
 
 if foto_uploadeada and len(st.session_state.historico_chat) == 0:
-    imagem_real = Image.open(foto_uploadeada)
-    
     if st.button("🔍 Enviar Foto para Diagnóstico Real", type="primary"):
-        with st.spinner("Analisando imagem com a base científica..."):
+        with st.spinner("Analisando imagem com a base científica via Groq..."):
             try:
-                # Inicializa o cliente moderno que suporta nativamente chaves AQ.Ab sem erro 401
-                client = genai.Client(api_key=GOOGLE_API_KEY)
+                # Converte a imagem real para enviar à IA
+                img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 
-                # Monta a estrutura unindo a foto e as diretrizes do robô
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=[imagem_real, CONTEXTO_CIENTIFICO, "Analise esta foto tirada do viveiro de açaí e gere o relatório completo estruturado de acordo com as suas diretrizes."]
+                # Inicializa o cliente da Groq
+                client = Groq(api_key=GROQ_API_KEY)
+                
+                # Dispara a requisição usando o modelo Llama de Visão Computacional
+                completion = client.chat.completions.create(
+                    model="llama-3.2-11b-vision-preview",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": f"{CONTEXTO_CIENTIFICO}\n\nAnalise esta foto do viveiro de açaí e gere o relatório completo de acordo com suas diretrizes."},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{img_base64}"
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    temperature=0.2
                 )
                 
-                # Salva o resultado real no histórico de chat
+                # Salva o relatório real gerado no histórico do app
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
-                    "texto": response.text, 
+                    "texto": completion.choices.message.content, 
                     "foto_usuario": foto_uploadeada
                 })
                 st.rerun()
             except Exception as e:
-                st.error(f"Erro na comunicação com a API do Google: {e}")
+                st.error(f"Erro na comunicação com o Servidor de IA: {e}")
 
 # --- DESIGN DA LINHA DO TEMPO DO CHAT FLUIDO ---
 if st.session_state.historico_chat:
@@ -71,26 +94,26 @@ if st.session_state.historico_chat:
         with st.chat_message(msg["autor"]):
             st.markdown(msg["texto"])
             if "foto_usuario" in msg:
-                st.image(msg["foto_usuario"], caption="📸 Imagem analisada pela IA", use_container_width=True)
+                st.image(msg["foto_usuario"], caption="📸 Imagem analisada pelo Llama", use_container_width=True)
 
-    # Campo de Chat contínuo para continuar a conversa fiada
+    # Campo de Chat contínuo para o produtor tirar dúvidas adicionais
     if pergunta_complementar := st.chat_input("Continue a conversa com a IA dos artigos técnicos..."):
         st.session_state.historico_chat.append({"autor": "user", "texto": pergunta_complementar})
         
-        with st.spinner("Buscando informações complementares..."):
+        with st.spinner("Buscando informações complementares na biblioteca..."):
             try:
-                client = genai.Client(api_key=GOOGLE_API_KEY)
-                
-                # Para manter o contexto da conversa vivo, passamos o histórico básico no prompt
+                client = Groq(api_key=GROQ_API_KEY)
                 historico_texto = "\n".join([f"{m['autor']}: {m['texto']}" for m in st.session_state.historico_chat[:-1]])
                 
                 prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
                 
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=prompt_chat
+                completion = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile", # Modelo avançado de texto para o chat contínuo
+                    messages=[{"role": "user", "content": prompt_chat}],
+                    temperature=0.3
                 )
-                st.session_state.historico_chat.append({"autor": "assistant", "texto": response.text})
+                
+                st.session_state.historico_chat.append({"autor": "assistant", "texto": completion.choices.message.content})
                 st.rerun()
             except Exception as e:
                 st.error(f"Erro no chat: {e}")
