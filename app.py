@@ -10,7 +10,8 @@ st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Gemini
 
 # --- CONFIGURAÇÃO DA CHAVE DO GEMINI REAl ---
 # Substitua o texto abaixo pela chave que você copiou do Google AI Studio
-GOOGLE_API_KEY = "AQ.Ab8RN6LiEnjBM2pudkpCAbhkM2xnJ4KFeFEx-rIr0hVPm_GA5Q"
+GOOGLE_API_KEY = "AQ.Ab8RN6K189zHeh_cK_F78wLHa0aMnjCjRlMaG2wCpvQbrPtiXw"
+
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # Inicializa o histórico de conversa na memória se não existir
