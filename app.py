@@ -16,7 +16,7 @@ try:
     URL_NGROK = st.secrets["URL_NGROK_LOCAL"]
     API_KEY = st.secrets["ANYTHINGLLM_API_KEY"]
 except Exception:
-    st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL and ANYTHINGLLM_API_KEY em Settings > Secrets.")
+    st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL e ANYTHINGLLM_API_KEY em Settings > Secrets.")
     st.stop()
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
@@ -65,7 +65,6 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                     "mode": "query"
                 }
                 
-                # ROTA UNIVERSAL ATUALIZADA: Conversa direto com a API sem depender do slug do Workspace
                 url_final = f"{URL_NGROK.rstrip('/')}/api/v1/chat"
                 response = requests.post(url_final, headers=headers, json=payload, timeout=60)
                 
@@ -73,7 +72,14 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                     raise Exception(f"O seu computador rejeitou a mensagem (Erro {response.status_code}). Detalhe: {response.text}")
                 
                 response_json = response.json()
-                texto_purificado = response_json["textResponse"]
+                
+                # CORREÇÃO CRÍTICA: Ajustado de textResponse para ler a chave nativa 'response' ou 'textResponse'
+                if "response" in response_json:
+                    texto_purificado = response_json["response"]
+                elif "textResponse" in response_json:
+                    texto_purificado = response_json["textResponse"]
+                else:
+                    texto_purificado = str(response_json)
                 
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
@@ -113,7 +119,14 @@ if st.session_state.historico_chat:
                 
                 response = requests.post(url_final, headers=headers, json=payload_chat, timeout=60)
                 response_json = response.json()
-                texto_purificado_chat = response_json["textResponse"]
+                
+                # MESMA CORREÇÃO PARA O CHAT CONTINUO
+                if "response" in response_json:
+                    texto_purificado_chat = response_json["response"]
+                elif "textResponse" in response_json:
+                    texto_purificado_chat = response_json["textResponse"]
+                else:
+                    texto_purificado_chat = str(response_json)
                 
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
