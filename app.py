@@ -1,8 +1,9 @@
 import streamlit as st
-from openai import OpenAI
 from PIL import Image
 import io
 import base64
+import requests
+import json
 
 # Configura o design do aplicativo móvel da sua AgTech
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
@@ -52,16 +53,16 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
             try:
                 img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 
-                # Inicializa o cliente estável apontando para a nuvem do OpenRouter
-                client = OpenAI(
-                    base_url="https://openrouter.ai",
-                    api_key=OPENROUTER_API_KEY
-                )
+                # Configuração dos cabeçalhos da requisição HTTP manual
+                headers = {
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json"
+                }
                 
-                # CHAMADA DO MODELO LLAMA DE VISÃO GRATUITO E ESTÁVEL DO OPENROUTER
-                completion = client.chat.completions.create(
-                    model="meta-llama/llama-3.2-11b-vision-instruct:free",
-                    messages=[
+                # Montagem do pacote de dados rígido do OpenRouter
+                payload = {
+                    "model": "meta-llama/llama-3.2-11b-vision-instruct:free",
+                    "messages": [
                         {
                             "role": "user",
                             "content": [
@@ -75,13 +76,17 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                             ]
                         }
                     ],
-                    temperature=0.2
-                )
+                    "temperature": 0.2
+                }
                 
-                # EXTRAÇÃO PURIFICADA RIGOROSA: Lê direto do dicionário interno de escolhas da API
-                texto_purificado = completion.choices[0].message.content
+                # Faz o envio direto via internet sem usar a biblioteca da OpenAI
+                response = requests.post("https://openrouter.ai", headers=headers, data=json.dumps(payload))
+                response_json = response.json()
                 
-                # Salva o relatório gerado no histórico do app
+                # Extração manual e segura do texto da resposta JSON
+                texto_purificado = response_json["choices"][0]["message"]["content"]
+                
+                # Salva o relatório real gerado no histórico do app
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
                     "texto": texto_purificado,
@@ -108,23 +113,24 @@ if st.session_state.historico_chat:
         
         with st.spinner("Buscando informações complementares na biblioteca..."):
             try:
-                client = OpenAI(
-                    base_url="https://openrouter.ai",
-                    api_key=OPENROUTER_API_KEY
-                )
-                historico_texto = "\n".join([f"{m['autor']}: {m['texto']}" for m in st.session_state.historico_chat[:-1]])
+                headers = {
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json"
+                }
                 
+                historico_texto = "\n".join([f"{m['autor']}: {m['texto']}" for m in st.session_state.historico_chat[:-1]])
                 prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
                 
-                # CHAMADA DO MODELO LLAMA DE TEXTO AVANÇADO GRATUITO
-                completion_texto = client.chat.completions.create(
-                    model="meta-llama/llama-3.3-70b-instruct:free",
-                    messages=[{"role": "user", "content": prompt_chat}],
-                    temperature=0.3
-                )
+                payload_chat = {
+                    "model": "meta-llama/llama-3.3-70b-instruct:free",
+                    "messages": [{"role": "user", "content": prompt_chat}],
+                    temperature: 0.3
+                }
                 
-                # EXTRAÇÃO PURIFICADA RIGOROSA DO TEXTO COMPLEMENTAR
-                texto_purificado_chat = completion_texto.choices[0].message.content
+                response = requests.post("https://openrouter.ai", headers=headers, data=json.dumps(payload_chat))
+                response_json = response.json()
+                
+                texto_purificado_chat = response_json["choices"][0]["message"]["content"]
                 
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
