@@ -9,10 +9,15 @@ import json
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by OpenRouter Cloud)")
+st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama & OpenRouter)")
 
-# --- CONFIGURAÇÃO DA CHAVE DO OPENROUTER COM CUSTO ZERO ---
-OPENROUTER_API_KEY = "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"
+# --- CONFIGURAÇÃO DA CHAVE DO OPENROUTER VIA SEGREDOS SEGUROS ---
+# O código agora puxa a chave de forma invisível do painel do Streamlit, evitando bloqueios
+try:
+    OPENROUTER_API_KEY = st.secrets["OPENROUTER_API_KEY"]
+except:
+    st.error("⚠️ Chave de API não configurada nos Secrets do Streamlit. Vá em Settings > Secrets e adicione OPENROUTER_API_KEY.")
+    st.stop()
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
 if "historico_chat" not in st.session_state:
@@ -58,7 +63,7 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                     "Content-Type": "application/json"
                 }
                 
-                # MUDANÇA ESTRATÉGICA: Usando o modelo de alta estabilidade permanente do OpenRouter
+                # Usando o modelo de alta estabilidade permanente do OpenRouter
                 payload = {
                     "model": "google/gemini-2.5-flash:free",
                     "messages": [
@@ -80,9 +85,9 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                 
                 response = requests.post("https://openrouter.ai", headers=headers, data=json.dumps(payload))
                 
-                # BLINDAGEM ANTI-TRAVAMENTO: Se o servidor não mandar JSON, captura o erro sem cair
+                # Captura o erro bruto em texto caso o servidor envie HTML
                 if response.status_code != 200:
-                    raise Exception(f"Servidor instável (Código {response.status_code}). Tente novamente em alguns segundos.")
+                    raise Exception(f"Erro no servidor (Código {response.status_code}): {response.text}")
                     
                 response_json = response.json()
                 texto_purificado = response_json["choices"][0]["message"]["content"]
@@ -131,7 +136,7 @@ if st.session_state.historico_chat:
                 response = requests.post("https://openrouter.ai", headers=headers, data=json.dumps(payload_chat))
                 
                 if response.status_code != 200:
-                    raise Exception(f"Servidor instável no chat (Código {response.status_code}).")
+                    raise Exception(f"Erro no chat (Código {response.status_code}): {response.text}")
                     
                 response_json = response.json()
                 texto_purificado_chat = response_json["choices"][0]["message"]["content"]
