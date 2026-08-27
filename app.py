@@ -19,6 +19,11 @@ except Exception:
     st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL e ANYTHINGLLM_API_KEY em Settings > Secrets.")
     st.stop()
 
+# --- ATENÇÃO PRODUTOR: CONFIGURAÇÃO DO NOME DA PASTA ---
+# Substitua o texto abaixo pelo nome interno (slug) que você viu na engrenagem da sua pasta
+# Exemplos comuns: "manejo-acai", "manejo_acai", "acai", "agtech"
+SLUG_DA_SUA_PASTA = "agtech"
+
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
 if "historico_chat" not in st.session_state:
     st.session_state.historico_chat = []
@@ -65,7 +70,8 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                     "mode": "query"
                 }
                 
-                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/chat"
+                # ROTA DE WORKSPACE RÍGIDA: Garante o direcionamento correto para os PDFs
+                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspaces/{SLUG_DA_SUA_PASTA}/chat"
                 response = requests.post(url_final, headers=headers, json=payload, timeout=60)
                 
                 if response.status_code != 200:
@@ -73,11 +79,11 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                 
                 response_json = response.json()
                 
-                # CORREÇÃO CRÍTICA: Ajustado de textResponse para ler a chave nativa 'response' ou 'textResponse'
-                if "response" in response_json:
-                    texto_purificado = response_json["response"]
-                elif "textResponse" in response_json:
+                # Captura de forma flexível as variações de resposta do AnythingLLM Desktop
+                if "textResponse" in response_json:
                     texto_purificado = response_json["textResponse"]
+                elif "response" in response_json:
+                    texto_purificado = response_json["response"]
                 else:
                     texto_purificado = str(response_json)
                 
@@ -111,7 +117,7 @@ if st.session_state.historico_chat:
                     "Content-Type": "application/json"
                 }
                 
-                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/chat"
+                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspaces/{SLUG_DA_SUA_PASTA}/chat"
                 payload_chat = {
                     "message": pergunta_complementar,
                     "mode": "query"
@@ -120,11 +126,10 @@ if st.session_state.historico_chat:
                 response = requests.post(url_final, headers=headers, json=payload_chat, timeout=60)
                 response_json = response.json()
                 
-                # MESMA CORREÇÃO PARA O CHAT CONTINUO
-                if "response" in response_json:
-                    texto_purificado_chat = response_json["response"]
-                elif "textResponse" in response_json:
+                if "textResponse" in response_json:
                     texto_purificado_chat = response_json["textResponse"]
+                elif "response" in response_json:
+                    texto_purificado_chat = response_json["response"]
                 else:
                     texto_purificado_chat = str(response_json)
                 
