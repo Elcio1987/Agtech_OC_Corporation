@@ -11,7 +11,6 @@ st.title("🌱 AgTech - Consultor Agroflorestal")
 st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Groq Cloud)")
 
 # --- CONFIGURAÇÃO DA CHAVE DO GROQ COM CUSTO ZERO ---
-# Sua chave oficial gsk_ inserida com sucesso e protegida por aspas
 GROQ_API_KEY = "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"
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
@@ -55,14 +54,17 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                 # Inicializa o cliente da Groq
                 client = Groq(api_key=GROQ_API_KEY)
                 
-                # MODELO ATUALIZADO DE VISÃO OFICIAL ATIVO EM 2026
+                # CORREÇÃO DA ESTRUTURA DO PACK DE CONTEÚDO (MESSAGES)
                 completion = client.chat.completions.create(
                     model="openai/gpt-oss-20b",
                     messages=[
                         {
                             "role": "user",
                             "content": [
-                                {"type": "text", "text": f"{CONTEXTO_CIENTIFICO}\n\nAnalise esta foto do viveiro de açaí e gere o relatório completo de acordo com suas diretrizes."},
+                                {
+                                    "type": "text", 
+                                    "text": f"{CONTEXTO_CIENTIFICO}\n\nAnalise esta foto do viveiro de açaí e gere o relatório completo de acordo com suas diretrizes."
+                                },
                                 {
                                     "type": "image_url",
                                     "image_url": {
@@ -107,7 +109,6 @@ if st.session_state.historico_chat:
                 
                 prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
                 
-                # MODELO ATUALIZADO DE TEXTO OFICIAL ATIVO EM 2026
                 completion = client.chat.completions.create(
                     model="qwen/qwen3.6-27b",
                     messages=[{"role": "user", "content": prompt_chat}],
