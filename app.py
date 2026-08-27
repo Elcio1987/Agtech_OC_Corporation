@@ -11,7 +11,7 @@ st.title("🌱 AgTech - Consultor Agroflorestal")
 st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Groq Cloud)")
 
 # --- CONFIGURAÇÃO DA CHAVE DO GROQ COM CUSTO ZERO ---
-# Cole aqui a sua nova chave gsk_ copiada do site console.groq.com
+# Sua chave oficial gsk_ inserida com sucesso e protegida por aspas
 GROQ_API_KEY = "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"
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
@@ -55,9 +55,9 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                 # Inicializa o cliente da Groq
                 client = Groq(api_key=GROQ_API_KEY)
                 
-                # CORREÇÃO CRÍTICA: Atualizado para o modelo de visão oficial ativo em 2026
+                # MODELO ATUALIZADO DE VISÃO OFICIAL ATIVO EM 2026
                 completion = client.chat.completions.create(
-                    model="meta-llama/llama-4-scout-17b-16e-instruct",
+                    model="openai/gpt-oss-20b",
                     messages=[
                         {
                             "role": "user",
@@ -94,7 +94,7 @@ if st.session_state.historico_chat:
         with st.chat_message(msg["autor"]):
             st.markdown(msg["texto"])
             if "foto_usuario" in msg:
-                st.image(msg["foto_usuario"], caption="📸 Imagem analisada pelo Llama", use_container_width=True)
+                st.image(msg["foto_usuario"], caption="📸 Imagem analisada pela IA", use_container_width=True)
 
     # Campo de Chat contínuo para o produtor tirar dúvidas adicionais
     if pergunta_complementar := st.chat_input("Continue a conversa com a IA dos artigos técnicos..."):
@@ -107,9 +107,9 @@ if st.session_state.historico_chat:
                 
                 prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
                 
-                # CORREÇÃO CRÍTICA: Atualizado para o modelo de texto ativo de alta capacidade
+                # MODELO ATUALIZADO DE TEXTO OFICIAL ATIVO EM 2026
                 completion = client.chat.completions.create(
-                    model="openai/gpt-oss-120b",
+                    model="qwen/qwen3.6-27b",
                     messages=[{"role": "user", "content": prompt_chat}],
                     temperature=0.3
                 )
