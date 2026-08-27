@@ -8,10 +8,9 @@ st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layou
 st.title("🌱 AgTech - Consultor Agroflorestal")
 st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Gemini API)")
 
-# --- CONFIGURAÇÃO DA CHAVE DO GEMINI REAl ---
-# Substitua o texto abaixo pela chave que você copiou do Google AI Studio
+# --- CONFIGURAÇÃO DA CHAVE DO GEMINI REAL ---
+# Sua chave de API oficial do Google AI Studio atualizada inserida com sucesso
 GOOGLE_API_KEY = "AQ.Ab8RN6K189zHeh_cK_F78wLHa0aMnjCjRlMaG2wCpvQbrPtiXw"
-
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # Inicializa o histórico de conversa na memória se não existir
@@ -25,8 +24,8 @@ Sua missão é dar suporte aos produtores rurais analisando imagens de campo e p
 
 Diretrizes obrigatórias de resposta:
 1. Faça uma avaliação crítica, fluida e interacional com o produtor (como um agrônomo de verdade conversando no campo).
-2. Apresente os resultados detalhando até 5 possíveis protocolos técnicos e práticos para corrigir o problema encontrado.
-3. Cite obrigatoriamente a fonte do artigo técnico (Ex: Notas Técnicas da Embrapa, Manuais Oficiais, Periódicos Científicos).
+2. Apresente os resultados detalhando até 5 possíveis protocolos técnicos e práticos para corrigir o problema encontrado. Ordene-os por relevância científica ou frequência de recomendação.
+3. Cite obrigatoriamente a fonte do artigo técnico para cada protocolo sugerido (Ex: Notas Técnicas da Embrapa, Manuais Oficiais, Periódicos Científicos). Faça uma avaliação crítica considerando se são periódicos indexados ou apenas cartilhas educativas.
 4. Se o produtor enviar uma foto e você NÃO conseguir identificar a praga, doença ou animal com certeza absoluta com base na literatura de açaí, diga estritamente que não encontrou na base de dados atual e que a equipe de desenvolvedores foi notificada para futuras atualizações. Nunca invente dados falsos (alucinações).
 5. Se o produtor disser que já fez uma medida e não funcionou, mude a abordagem técnica imediatamente e sugere o 'Plano B' de contingência biológica ou isolamento das mudas.
 """
@@ -44,8 +43,8 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
     if st.button("🔍 Enviar Foto para Diagnóstico Real", type="primary"):
         with st.spinner("Analisando imagem com a base científica..."):
             try:
-                # Aciona o modelo de visão avançado do Gemini (capaz de ver fotos e ler textos)
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                # Aciona o modelo atualizado compatível com chaves AQ.Ab
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 
                 # Monta a pergunta estruturada unindo a imagem aos critérios de negócio
                 pergunta = [CONTEXTO_CIENTIFICO, "Analise esta foto tirada do viveiro de açaí e gere o relatório completo estruturado de acordo com as suas diretrizes.", imagem_real]
@@ -65,7 +64,7 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
 # --- DESIGN DA LINHA DO TEMPO DO CHAT FLUIDO ---
 if st.session_state.historico_chat:
     st.markdown("---")
-    st.write("💬 **Linha de Atendimento:**")
+    st.write("💬 **Line de Atendimento:**")
     
     for msg in st.session_state.historico_chat:
         with st.chat_message(msg["autor"]):
@@ -79,7 +78,7 @@ if st.session_state.historico_chat:
         
         with st.spinner("Buscando informações complementares..."):
             try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 
                 # Para manter o contexto da conversa vivo, passamos o histórico básico no prompt
                 historico_texto = "\n".join([f"{m['autor']}: {m['texto']}" for m in st.session_state.historico_chat[:-1]])
