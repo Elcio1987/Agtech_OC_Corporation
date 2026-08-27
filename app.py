@@ -1,5 +1,5 @@
 import streamlit as st
-from groq import Groq
+from openai import OpenAI
 from PIL import Image
 import io
 import base64
@@ -8,10 +8,11 @@ import base64
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama Vision)")
+st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama & OpenRouter)")
 
-# --- CONFIGURAÇÃO DA CHAVE DO GROQ COM CUSTO ZERO ---
-GROQ_API_KEY = "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"
+# --- CONFIGURAÇÃO DA CHAVE DO OPENROUTER COM CUSTO ZERO ---
+# Cole aqui a sua nova chave copiada do site openrouter.ai (começa com sk-or-v1-)
+OPENROUTER_API_KEY = "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"
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
 if "historico_chat" not in st.session_state:
@@ -30,18 +31,13 @@ Diretrizes obrigatórias de resposta:
 5. Se o produtor disser que já fez uma medida e não funcionou, mude a abordagem técnica imediatamente e sugere o 'Plano B' de contingência biológica ou isolamento das mudas.
 """
 
-# Função com Inteligência de Compressão para reduzir os Tokens e passar no Plano Gratuito
-def comprimir_e_converter_base64(uploaded_file):
+# Função para converter e otimizar a imagem para Base64 sem estourar limites de tokens da rede
+def converter_imagem_para_base64(uploaded_file):
     image = Image.open(uploaded_file)
-    
-    # 1. Reduz o tamanho físico da foto para 512px (Mais que suficiente para a IA ver e economiza 90% de tokens)
-    max_size = (512, 512)
+    max_size = (600, 600) # Tamanho otimizado para o Llama processar pixels com nitidez e leveza
     image.thumbnail(max_size, Image.Resampling.LANCZOS)
-    
-    # 2. Comprime a qualidade e converte em bytes leves
     buffered = io.BytesIO()
-    image.convert("RGB").save(buffered, format="JPEG", quality=60) # Qualidade otimizada para peso mínimo
-    
+    image.convert("RGB").save(buffered, format="JPEG", quality=70)
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 # --- INTERFACE DO APLICATIVO REAL ---
@@ -53,23 +49,24 @@ foto_uploadeada = st.file_uploader("📸 Notou algo estranho ou tem uma dúvida?
 
 if foto_uploadeada and len(st.session_state.historico_chat) == 0:
     if st.button("🔍 Enviar Foto para Diagnóstico Real", type="primary"):
-        with st.spinner("Compactando imagem e consultando base científica..."):
+        with st.spinner("Analisando imagem com o cérebro do Llama via OpenRouter..."):
             try:
-                # Converte e enxuga a imagem real para caber no limite gratuito de tokens
-                img_base64 = comprimir_e_converter_base64(foto_uploadeada)
-                client = Groq(api_key=GROQ_API_KEY)
+                img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 
-                # Usando o modelo nativo de Visão da Groq com suporte a listas estruturadas
+                # Inicializa o cliente estável da OpenAI apontando para a nuvem do OpenRouter
+                client = OpenAI(
+                    base_url="https://openrouter.ai",
+                    api_key=OPENROUTER_API_KEY
+                )
+                
+                # CHAMADA DO MODELO LLAMA DE VISÃO GRATUITO E ESTÁVEL DO OPENROUTER
                 completion = client.chat.completions.create(
-                    model="llama-3.2-11b-vision-preview",
+                    model="meta-llama/llama-3.2-11b-vision-instruct:free",
                     messages=[
                         {
                             "role": "user",
                             "content": [
-                                {
-                                    "type": "text", 
-                                    "text": f"{CONTEXTO_CIENTIFICO}\n\nAnalise esta foto tirada do viveiro de açaí e gere o relatório técnico de acordo com as diretrizes."
-                                },
+                                {"type": "text", "text": f"{CONTEXTO_CIENTIFICO}\n\nAnalise esta foto do viveiro de açaí e gere o relatório completo de acordo com suas diretrizes."},
                                 {
                                     "type": "image_url",
                                     "image_url": {
@@ -82,10 +79,10 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                     temperature=0.2
                 )
                 
-                # Salva o relatório gerado no histórico
+                # Salva o relatório real gerado no histórico do app
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
-                    "texto": completion.choices.message.content, 
+                    "texto": completion.choices[0].message.content,
                     "foto_usuario": foto_uploadeada
                 })
                 st.rerun()
@@ -109,18 +106,25 @@ if st.session_state.historico_chat:
         
         with st.spinner("Buscando informações complementares na biblioteca..."):
             try:
-                client = Groq(api_key=GROQ_API_KEY)
+                client = OpenAI(
+                    base_url="https://openrouter.ai",
+                    api_key=OPENROUTER_API_KEY
+                )
                 historico_texto = "\n".join([f"{m['autor']}: {m['texto']}" for m in st.session_state.historico_chat[:-1]])
                 
                 prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
                 
+                # CHAMADA DO MODELO LLAMA DE TEXTO AVANÇADO GRATUITO
                 completion_texto = client.chat.completions.create(
-                    model="openai/gpt-oss-120b", # Usando texto puro (gasta quase nada de tokens)
+                    model="meta-llama/llama-3.3-70b-instruct:free",
                     messages=[{"role": "user", "content": prompt_chat}],
                     temperature=0.3
                 )
                 
-                st.session_state.historico_chat.append({"autor": "assistant", "texto": completion_texto.choices.message.content})
+                st.session_state.historico_chat.append({
+                    "autor": "assistant", 
+                    "texto": completion_texto.choices[0].message.content
+                })
                 st.rerun()
             except Exception as e:
                 st.error(f"Erro no chat: {e}")
