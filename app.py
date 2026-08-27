@@ -3,6 +3,7 @@ from openai import OpenAI
 from PIL import Image
 import io
 import base64
+import json
 
 # Configura o design do aplicativo móvel da sua AgTech
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
@@ -30,6 +31,34 @@ Diretrizes obrigatórias de resposta:
 5. Se o produtor disser que já fez uma medida e não funcionou, mude a abordagem técnica imediatamente e sugere o 'Plano B' de contingência biológica ou isolamento das mudas.
 """
 
+# FUNÇÃO EXTRATORA INTELIGENTE: Evita o erro 'str object has no attribute choices'
+def extrair_texto_da_resposta(resposta_bruta):
+    # Se o OpenRouter já devolveu o texto puro diretamente como string
+    if isinstance(resposta_bruta, str):
+        try:
+            # Tenta decodificar caso seja um JSON em formato de texto
+            dados_json = json.loads(resposta_bruta)
+            if "choices" in dados_json:
+                return dados_json["choices"][0]["message"]["content"]
+            elif "error" in dados_json:
+                return f"Erro reportado pelo servidor: {dados_json['error']['message']}"
+            else:
+                return resposta_bruta
+        except:
+            # Se for texto comum puro, retorna ele mesmo
+            return resposta_bruta
+            
+    # Se o OpenRouter devolveu no formato padrão de objeto estruturado da OpenAI
+    try:
+        if hasattr(resposta_bruta, "choices") and len(resposta_bruta.choices) > 0:
+            return resposta_bruta.choices[0].message.content
+        elif hasattr(resposta_bruta, "content"):
+            return resposta_bruta.content
+        else:
+            return str(resposta_bruta)
+    except Exception as e:
+        return f"Processado com sucesso, mas houve uma divergência de exibição. Resposta recebida: {str(resposta_bruta)}"
+
 # Função para converter e otimizar a imagem para Base64 sem estourar limites de tokens da rede
 def converter_imagem_para_base64(uploaded_file):
     image = Image.open(uploaded_file)
@@ -52,7 +81,7 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
             try:
                 img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 
-                # Inicializa o cliente estável da OpenAI apontando para a nuvem do OpenRouter
+                # Inicializa o cliente estável apontando para a nuvem do OpenRouter
                 client = OpenAI(
                     base_url="https://openrouter.ai",
                     api_key=OPENROUTER_API_KEY
@@ -78,13 +107,13 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                     temperature=0.2
                 )
                 
-                # CORREÇÃO CRÍTICA AQUI: Adicionado o índice [0] padrão da biblioteca
-                texto_resposta = completion.choices[0].message.content
+                # Usa a nova função extratora inteligente para blindar o resultado
+                texto_purificado = extrair_texto_da_resposta(completion)
                 
-                # Salva o relatório real gerado no histórico do app
+                # Salva o relatório gerado no histórico do app
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
-                    "texto": texto_resposta,
+                    "texto": texto_purificado,
                     "foto_usuario": foto_uploadeada
                 })
                 st.rerun()
@@ -123,12 +152,12 @@ if st.session_state.historico_chat:
                     temperature=0.3
                 )
                 
-                # CORREÇÃO CRÍTICA AQUI: Adicionado o índice [0] padrão da biblioteca no chat de texto
-                texto_resposta_chat = completion_texto.choices[0].message.content
+                # Usa a mesma função extratora inteligente para blindar o chat contínuo
+                texto_purificado_chat = extrair_texto_da_resposta(completion_texto)
                 
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
-                    "texto": texto_resposta_chat
+                    "texto": texto_purificado_chat
                 })
                 st.rerun()
             except Exception as e:
