@@ -11,7 +11,6 @@ st.title("🌱 AgTech - Consultor Agroflorestal")
 st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama & OpenRouter)")
 
 # --- CONFIGURAÇÃO DA CHAVE DO OPENROUTER COM CUSTO ZERO ---
-# Cole aqui a sua nova chave copiada do site openrouter.ai (começa com sk-or-v1-)
 OPENROUTER_API_KEY = "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"
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
@@ -79,10 +78,13 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                     temperature=0.2
                 )
                 
+                # CORREÇÃO CRÍTICA AQUI: Adicionado o índice [0] padrão da biblioteca
+                texto_resposta = completion.choices[0].message.content
+                
                 # Salva o relatório real gerado no histórico do app
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
-                    "texto": completion.choices[0].message.content,
+                    "texto": texto_resposta,
                     "foto_usuario": foto_uploadeada
                 })
                 st.rerun()
@@ -121,9 +123,12 @@ if st.session_state.historico_chat:
                     temperature=0.3
                 )
                 
+                # CORREÇÃO CRÍTICA AQUI: Adicionado o índice [0] padrão da biblioteca no chat de texto
+                texto_resposta_chat = completion_texto.choices[0].message.content
+                
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
-                    "texto": completion_texto.choices[0].message.content
+                    "texto": texto_resposta_chat
                 })
                 st.rerun()
             except Exception as e:
