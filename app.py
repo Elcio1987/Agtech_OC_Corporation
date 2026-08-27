@@ -12,12 +12,11 @@ st.title("🌱 AgTech - Consultor Agroflorestal")
 st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Seu PC Local & Llama)")
 
 # --- CONFIGURAÇÃO INVISÍVEL VIA SECRETS DO STREAMLIT ---
-# O código agora busca corretamente as variáveis do seu PC local
 try:
     URL_NGROK = st.secrets["URL_NGROK_LOCAL"]
     API_KEY = st.secrets["ANYTHINGLLM_API_KEY"]
 except Exception:
-    st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL e ANYTHINGLLM_API_KEY em Settings > Secrets.")
+    st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL and ANYTHINGLLM_API_KEY em Settings > Secrets.")
     st.stop()
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
@@ -46,13 +45,11 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
             try:
                 img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 
-                # Configura a comunicação direta com a API do AnythingLLM no seu computador
                 headers = {
                     "Authorization": f"Bearer {API_KEY}",
                     "Content-Type": "application/json"
                 }
                 
-                # Prompt rígido que força o Llama do seu PC a obedecer os seus critérios de negócio
                 prompt_comando = f"""
                 [Análise de Imagem anexada via Base64: data:image/jpeg;base64,{img_base64}]
                 
@@ -65,20 +62,19 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                 
                 payload = {
                     "message": prompt_comando,
-                    "mode": "query" # Modo Query força a usar em 2026 APENAS os seus PDFs locais, sem inventar nada!
+                    "mode": "query"
                 }
                 
-                # Envia o pacote direto para a URL do seu ngrok para a pasta do açaí
-                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspaces/manejo_acai/chat"
+                # ROTA UNIVERSAL ATUALIZADA: Conversa direto com a API sem depender do slug do Workspace
+                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/chat"
                 response = requests.post(url_final, headers=headers, json=payload, timeout=60)
                 
                 if response.status_code != 200:
-                    raise Exception(f"O seu computador rejeitou a mensagem (Erro {response.status_code}). Verifique se o AnythingLLM está aberto.")
+                    raise Exception(f"O seu computador rejeitou a mensagem (Erro {response.status_code}). Detalhe: {response.text}")
                 
                 response_json = response.json()
                 texto_purificado = response_json["textResponse"]
                 
-                # Salva o relatório real gerado no histórico do app
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
                     "texto": texto_purificado,
@@ -99,7 +95,6 @@ if st.session_state.historico_chat:
             if "foto_usuario" in msg:
                 st.image(msg["foto_usuario"], caption="📸 Imagem enviada ao servidor local", use_container_width=True)
 
-    # Campo de Chat contínuo para o produtor continuar tirando dúvidas sobre a mesma ocorrência
     if pergunta_complementar := st.chat_input("Continue a conversa com o Llama do seu PC..."):
         st.session_state.historico_chat.append({"autor": "user", "texto": pergunta_complementar})
         
@@ -110,7 +105,7 @@ if st.session_state.historico_chat:
                     "Content-Type": "application/json"
                 }
                 
-                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspaces/manejo_acai/chat"
+                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/chat"
                 payload_chat = {
                     "message": pergunta_complementar,
                     "mode": "query"
@@ -128,7 +123,6 @@ if st.session_state.historico_chat:
             except Exception as e:
                 st.error(f"Erro no chat local: {str(e)}")
 
-    # Botão para limpar a tela
     st.write("")
     if st.button("🔄 Arquivar Atendimento"):
         st.session_state.historico_chat = []
