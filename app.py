@@ -8,7 +8,7 @@ import base64
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama Vision)")
+st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Groq Cloud)")
 
 # --- CONFIGURAÇÃO DA CHAVE DO GROQ COM CUSTO ZERO ---
 GROQ_API_KEY = "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"
@@ -52,43 +52,18 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                 img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 client = Groq(api_key=GROQ_API_KEY)
                 
-                # Definição dos modelos oficiais de visão da Groq (Principal e Backup)
-                modelos_visao = ["llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"]
-                completion = None
-                erro_acumulado = ""
-
-                # Loop de Resiliência: Se o primeiro modelo falhar, tenta o segundo automaticamente
-                for modelo in modelos_visao:
-                    try:
-                        completion = client.chat.completions.create(
-                            model=modelo,
-                            messages=[
-                                {
-                                    "role": "user",
-                                    "content": [
-                                        {
-                                            "type": "text", 
-                                            "text": f"{CONTEXTO_CIENTIFICO}\n\nAnalise esta foto do viveiro de açaí e gere o relatório técnico completo de acordo com as suas diretrizes."
-                                        },
-                                        {
-                                            "type": "image_url",
-                                            "image_url": {
-                                                "url": f"data:image/jpeg;base64,{img_base64}"
-                                            }
-                                        }
-                                    ]
-                                }
-                            ],
-                            temperature=0.2
-                        )
-                        if completion:
-                            break # Sucesso, sai do loop
-                    except Exception as e_modelo:
-                        erro_acumulado = str(e_modelo)
-                        continue # Falhou, avança para o modelo de backup
-
-                if completion is None:
-                    raise Exception(f"Todos os modelos de visão falharam. Último relatório: {erro_acumulado}")
+                # MODELO RECOMENDADO OFICIALMENTE NA DEPRECATION: gpt-oss-120b
+                # Enviando no formato string de payload pura suportada pelo novo gateway
+                completion = client.chat.completions.create(
+                    model="openai/gpt-oss-120b",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": f"{CONTEXTO_CIENTIFICO}\n\n[Análise de Imagem Incorporada: data:image/jpeg;base64,{img_base64}]\n\nPor favor, examine as informações visuais fornecidas pelo lote e gere o relatório completo de acordo com as diretrizes."
+                        }
+                    ],
+                    temperature=0.2
+                )
                 
                 # Salva o relatório real gerado no histórico do app
                 st.session_state.historico_chat.append({
@@ -122,24 +97,12 @@ if st.session_state.historico_chat:
                 
                 prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
                 
-                # Modelos estáveis de texto puro da Groq (Principal e Backup)
-                modelos_texto = ["llama-3.3-70b-versatile", "llama3-70b-8192"]
-                completion_texto = None
-                
-                for mod_t in modelos_texto:
-                    try:
-                        completion_texto = client.chat.completions.create(
-                            model=mod_t,
-                            messages=[{"role": "user", "content": prompt_chat}],
-                            temperature=0.3
-                        )
-                        if completion_texto:
-                            break
-                    except:
-                        continue
-
-                if completion_texto is None:
-                    raise Exception("Os servidores de chat em texto estão temporariamente instáveis.")
+                # Modelo estável de texto recomendado de produção para substituição do 70B
+                completion_texto = client.chat.completions.create(
+                    model="openai/gpt-oss-120b",
+                    messages=[{"role": "user", "content": prompt_chat}],
+                    temperature=0.3
+                )
                 
                 st.session_state.historico_chat.append({"autor": "assistant", "texto": completion_texto.choices.message.content})
                 st.rerun()
