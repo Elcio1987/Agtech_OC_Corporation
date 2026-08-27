@@ -12,7 +12,7 @@ st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama 
 
 # --- CONFIGURAÇÃO DA CHAVE DO GROQ COM CUSTO ZERO ---
 # Cole aqui a sua nova chave gsk_ copiada do site console.groq.com
-GROQ_API_KEY = "COLE_AQUI_A_SUA_CHAVE_GSK"
+GROQ_API_KEY = "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"
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
 if "historico_chat" not in st.session_state:
