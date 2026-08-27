@@ -1,18 +1,17 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from PIL import Image
-import os
 
 # Configura o design do aplicativo móvel da sua AgTech
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Gemini API)")
+st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Gemini v1 API)")
 
-# --- CONFIGURAÇÃO DA CHAVE DO GEMINI REAL ---
-# Injeta a chave AQ.Ab direto no ambiente do sistema para contornar o erro 401
-os.environ["GEMINI_API_KEY"] = "AQ.Ab8RN6lbvLefaj3Kc3AJCQ5OslHCnjEMNaNnAa3CT6Orwtt7qQ"
-genai.configure()
+# --- CONFIGURAÇÃO DA CHAVE DO GEMINI ATUALIZADA ---
+# Utilizando a sua chave AQ.Ab com o cliente correto para evitar o erro 401
+GOOGLE_API_KEY = "AQ.Ab8RN6lbvLefaj3Kc3AJCQ5OslHCnjEMNaNnAa3CT6Orwtt7qQ"
 
 # Inicializa o histórico de conversa na memória se não existir
 if "historico_chat" not in st.session_state:
@@ -26,7 +25,7 @@ Sua missão é dar suporte aos produtores rurais analisando imagens de campo e p
 Diretrizes obrigatórias de resposta:
 1. Faça uma avaliação crítica, fluida e interacional com o produtor (como um agrônomo de verdade conversando no campo).
 2. Apresente os resultados detalhando até 5 possíveis protocolos técnicos e práticos para corrigir o problema encontrado. Ordene-os por relevância científica ou frequência de recomendação.
-3. Cite obrigatoriamente a fonte do artigo técnico para cada protocolo sugerido (Ex: Notas Técnicas da Embrapa, Manuais Oficiais, Periódicos Científicos). Faça uma avaliação crítica considerando se sono periódicos indexados ou apenas cartilhas educativas.
+3. Cite obrigatoriamente a fonte do artigo técnico para cada protocolo sugerido (Ex: Notas Técnicas da Embrapa, Manuais Oficiais, Periódicos Científicos). Faça uma avaliação crítica considerando se são periódicos indexados ou apenas cartilhas educativas.
 4. Se o produtor enviar uma foto e você NÃO conseguir identificar a praga, doença ou animal com certeza absoluta com base na literatura de açaí, diga estritamente que não encontrou na base de dados atual e que a equipe de desenvolvedores foi notificada para futuras atualizações. Nunca invente dados falsos (alucinações).
 5. Se o produtor disser que já fez uma medida e não funcionou, mude a abordagem técnica imediatamente e sugere o 'Plano B' de contingência biológica ou isolamento das mudas.
 """
@@ -44,13 +43,14 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
     if st.button("🔍 Enviar Foto para Diagnóstico Real", type="primary"):
         with st.spinner("Analisando imagem com a base científica..."):
             try:
-                # Usando o modelo estável de visão do ecossistema
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                # Inicializa o cliente moderno que suporta nativamente chaves AQ.Ab sem erro 401
+                client = genai.Client(api_key=GOOGLE_API_KEY)
                 
-                # Monta a pergunta estruturada unindo a imagem aos critérios de negócio
-                pergunta = [CONTEXTO_CIENTIFICO, "Analise esta foto tirada do viveiro de açaí e gere o relatório completo estruturado de acordo com as suas diretrizes.", imagem_real]
-                
-                response = model.generate_content(pergunta)
+                # Monta a estrutura unindo a foto e as diretrizes do robô
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=[imagem_real, CONTEXTO_CIENTIFICO, "Analise esta foto tirada do viveiro de açaí e gere o relatório completo estruturado de acordo com as suas diretrizes."]
+                )
                 
                 # Salva o resultado real no histórico de chat
                 st.session_state.historico_chat.append({
@@ -73,20 +73,23 @@ if st.session_state.historico_chat:
             if "foto_usuario" in msg:
                 st.image(msg["foto_usuario"], caption="📸 Imagem analisada pela IA", use_container_width=True)
 
-    # Campo de Chat contínuo para o produtor continuar tirando dúvidas sobre a mesma ocorrência
+    # Campo de Chat contínuo para continuar a conversa fiada
     if pergunta_complementar := st.chat_input("Continue a conversa com a IA dos artigos técnicos..."):
         st.session_state.historico_chat.append({"autor": "user", "texto": pergunta_complementar})
         
         with st.spinner("Buscando informações complementares..."):
             try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                client = genai.Client(api_key=GOOGLE_API_KEY)
                 
                 # Para manter o contexto da conversa vivo, passamos o histórico básico no prompt
                 historico_texto = "\n".join([f"{m['autor']}: {m['texto']}" for m in st.session_state.historico_chat[:-1]])
                 
                 prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
                 
-                response = model.generate_content(prompt_chat)
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt_chat
+                )
                 st.session_state.historico_chat.append({"autor": "assistant", "texto": response.text})
                 st.rerun()
             except Exception as e:
