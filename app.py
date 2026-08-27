@@ -9,7 +9,7 @@ import json
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama & OpenRouter)")
+st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by OpenRouter Cloud)")
 
 # --- CONFIGURAÇÃO DA CHAVE DO OPENROUTER COM CUSTO ZERO ---
 OPENROUTER_API_KEY = "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"
@@ -34,7 +34,7 @@ Diretrizes obrigatórias de resposta:
 # Função para converter e otimizar a imagem para Base64 sem estourar limites de tokens da rede
 def converter_imagem_para_base64(uploaded_file):
     image = Image.open(uploaded_file)
-    max_size = (600, 600) # Tamanho otimizado para o Llama processar pixels com nitidez e leveza
+    max_size = (600, 600) # Tamanho otimizado para a rede carregar com velocidade máxima
     image.thumbnail(max_size, Image.Resampling.LANCZOS)
     buffered = io.BytesIO()
     image.convert("RGB").save(buffered, format="JPEG", quality=70)
@@ -49,19 +49,18 @@ foto_uploadeada = st.file_uploader("📸 Notou algo estranho ou tem uma dúvida?
 
 if foto_uploadeada and len(st.session_state.historico_chat) == 0:
     if st.button("🔍 Enviar Foto para Diagnóstico Real", type="primary"):
-        with st.spinner("Analisando imagem com o cérebro do Llama via OpenRouter..."):
+        with st.spinner("Analisando imagem com a base científica estável..."):
             try:
                 img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 
-                # Configuração dos cabeçalhos da requisição HTTP manual
                 headers = {
                     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                     "Content-Type": "application/json"
                 }
                 
-                # Montagem do pacote de dados rígido do OpenRouter
+                # MUDANÇA ESTRATÉGICA: Usando o modelo de alta estabilidade permanente do OpenRouter
                 payload = {
-                    "model": "meta-llama/llama-3.2-11b-vision-instruct:free",
+                    "model": "google/gemini-2.5-flash:free",
                     "messages": [
                         {
                             "role": "user",
@@ -79,14 +78,16 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                     "temperature": 0.2
                 }
                 
-                # Faz o envio direto via internet sem usar a biblioteca da OpenAI
                 response = requests.post("https://openrouter.ai", headers=headers, data=json.dumps(payload))
-                response_json = response.json()
                 
-                # Extração manual e segura do texto da resposta JSON
+                # BLINDAGEM ANTI-TRAVAMENTO: Se o servidor não mandar JSON, captura o erro sem cair
+                if response.status_code != 200:
+                    raise Exception(f"Servidor instável (Código {response.status_code}). Tente novamente em alguns segundos.")
+                    
+                response_json = response.json()
                 texto_purificado = response_json["choices"][0]["message"]["content"]
                 
-                # Salva o relatório real gerado no histórico do app
+                # Salva o relatório gerado no histórico
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
                     "texto": texto_purificado,
@@ -111,7 +112,7 @@ if st.session_state.historico_chat:
     if pergunta_complementar := st.chat_input("Continue a conversa com a IA dos artigos técnicos..."):
         st.session_state.historico_chat.append({"autor": "user", "texto": pergunta_complementar})
         
-        with st.spinner("Buscando informações complementares na biblioteca..."):
+        with st.spinner("Buscando informações complementares..."):
             try:
                 headers = {
                     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -122,14 +123,17 @@ if st.session_state.historico_chat:
                 prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
                 
                 payload_chat = {
-                    "model": "meta-llama/llama-3.3-70b-instruct:free",
+                    "model": "google/gemini-2.5-flash:free",
                     "messages": [{"role": "user", "content": prompt_chat}],
-                    temperature: 0.3
+                    "temperature": 0.3
                 }
                 
                 response = requests.post("https://openrouter.ai", headers=headers, data=json.dumps(payload_chat))
-                response_json = response.json()
                 
+                if response.status_code != 200:
+                    raise Exception(f"Servidor instável no chat (Código {response.status_code}).")
+                    
+                response_json = response.json()
                 texto_purificado_chat = response_json["choices"][0]["message"]["content"]
                 
                 st.session_state.historico_chat.append({
