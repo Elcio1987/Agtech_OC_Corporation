@@ -1,6 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
+import os
 
 # Configura o design do aplicativo móvel da sua AgTech
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
@@ -9,9 +10,9 @@ st.title("🌱 AgTech - Consultor Agroflorestal")
 st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Gemini API)")
 
 # --- CONFIGURAÇÃO DA CHAVE DO GEMINI REAL ---
-# Sua nova chave limpa e isolada gerada com sucesso no Google AI Studio
-GOOGLE_API_KEY = "AQ.Ab8RN6IbvLefaj3Kc3AJCQ5OsIHCnjEMNaNnAa3CT6Orwtt7qQ"
-genai.configure(api_key=GOOGLE_API_KEY)
+# Injeta a chave AQ.Ab direto no ambiente do sistema para contornar o erro 401
+os.environ["GEMINI_API_KEY"] = "AQ.Ab8RN6lbvLefaj3Kc3AJCQ5OslHCnjEMNaNnAa3CT6Orwtt7qQ"
+genai.configure()
 
 # Inicializa o histórico de conversa na memória se não existir
 if "historico_chat" not in st.session_state:
@@ -25,7 +26,7 @@ Sua missão é dar suporte aos produtores rurais analisando imagens de campo e p
 Diretrizes obrigatórias de resposta:
 1. Faça uma avaliação crítica, fluida e interacional com o produtor (como um agrônomo de verdade conversando no campo).
 2. Apresente os resultados detalhando até 5 possíveis protocolos técnicos e práticos para corrigir o problema encontrado. Ordene-os por relevância científica ou frequência de recomendação.
-3. Cite obrigatoriamente a fonte do artigo técnico para cada protocolo sugerido (Ex: Notas Técnicas da Embrapa, Manuais Oficiais, Periódicos Científicos). Faça uma avaliação crítica considerando se são periódicos indexados ou apenas cartilhas educativas.
+3. Cite obrigatoriamente a fonte do artigo técnico para cada protocolo sugerido (Ex: Notas Técnicas da Embrapa, Manuais Oficiais, Periódicos Científicos). Faça uma avaliação crítica considerando se sono periódicos indexados ou apenas cartilhas educativas.
 4. Se o produtor enviar uma foto e você NÃO conseguir identificar a praga, doença ou animal com certeza absoluta com base na literatura de açaí, diga estritamente que não encontrou na base de dados atual e que a equipe de desenvolvedores foi notificada para futuras atualizações. Nunca invente dados falsos (alucinações).
 5. Se o produtor disser que já fez uma medida e não funcionou, mude a abordagem técnica imediatamente e sugere o 'Plano B' de contingência biológica ou isolamento das mudas.
 """
@@ -43,7 +44,7 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
     if st.button("🔍 Enviar Foto para Diagnóstico Real", type="primary"):
         with st.spinner("Analisando imagem com a base científica..."):
             try:
-                # Aciona o modelo de visão rápido e avançado do Google
+                # Usando o modelo estável de visão do ecossistema
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 # Monta a pergunta estruturada unindo a imagem aos critérios de negócio
@@ -74,7 +75,7 @@ if st.session_state.historico_chat:
 
     # Campo de Chat contínuo para o produtor continuar tirando dúvidas sobre a mesma ocorrência
     if pergunta_complementar := st.chat_input("Continue a conversa com a IA dos artigos técnicos..."):
-        st.session_state.historico_chat.append({"autor": "user", "telefone": pergunta_complementar})
+        st.session_state.historico_chat.append({"autor": "user", "texto": pergunta_complementar})
         
         with st.spinner("Buscando informações complementares..."):
             try:
