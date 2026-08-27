@@ -1,40 +1,30 @@
 import streamlit as st
-from openai import OpenAI
+import requests
+import json
 from PIL import Image
 import io
 import base64
 
 # Configura o design do aplicativo móvel da sua AgTech
-st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
+st.set_page_config(page_title="AgTech Açaí - Local", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama & OpenRouter)")
+st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Seu PC Local & Llama)")
 
-# --- CONFIGURAÇÃO SEGURA DA CHAVE DO OPENROUTER ---
+# --- CONFIGURAÇÃO INVISÍVEL VIA SECRETS DO STREAMLIT ---
+# O código agora busca corretamente as variáveis do seu PC local
 try:
-    OPENROUTER_API_KEY = st.secrets["OPENROUTER_API_KEY"]
+    URL_NGROK = st.secrets["URL_NGROK_LOCAL"]
+    API_KEY = st.secrets["ANYTHINGLLM_API_KEY"]
 except Exception:
-    st.error("⚠️ Chave de API não configurada nos Secrets do Streamlit. Vá em Settings > Secrets e adicione OPENROUTER_API_KEY.")
+    st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL e ANYTHINGLLM_API_KEY em Settings > Secrets.")
     st.stop()
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
 if "historico_chat" not in st.session_state:
     st.session_state.historico_chat = []
 
-# Contexto científico fixo que força a IA a agir como o pesquisador de Açaí da Embrapa
-CONTEXTO_CIENTIFICO = """
-Você é o especialista em Inteligência Artificial da AgTech focado em Sistemas Agroflorestais (SAFs) de Açaí de Terra Firme.
-Sua missão é dar suporte aos produtores rurais analisando imagens de campo e perguntas.
-
-Diretrizes obrigatórias de resposta:
-1. Faça uma avaliação crítica, fluida e interacional com o produtor (como um agrônomo de verdade conversando no campo).
-2. Apresente os resultados detalhando até 5 possíveis protocolos técnicos e práticos para corrigir o problema encontrado. Ordene-os por relevância científica ou frequência de recomendação.
-3. Cite obrigatoriamente a fonte do artigo técnico para cada protocolo sugerido (Ex: Notas Técnicas da Embrapa, Manuais Oficiais, Periódicos Científicos). Faça uma avaliação crítica considerando se são periódicos indexados ou apenas cartilhas educativas.
-4. Se o produtor enviar uma foto e você NÃO conseguir identificar a praga, doença ou animal com certeza absoluta com base na literatura de açaí, diga estritamente que não encontrou na base de dados atual e que a equipe de desenvolvedores foi notificada para futuras updates. Nunca invente dados falsos (alucinações).
-5. Se o produtor disser que já fez uma medida e não funcionou, mude a abordagem técnica imediatamente e sugere o 'Plano B' de contingência biológica ou isolamento das mudas.
-"""
-
-# Função para converter e otimizar a imagem para Base64 sem estourar limites de tokens da rede
+# Função para converter e otimizar a imagem para enviar ao seu computador
 def converter_imagem_para_base64(uploaded_file):
     image = Image.open(uploaded_file)
     max_size = (600, 600)
@@ -45,57 +35,48 @@ def converter_imagem_para_base64(uploaded_file):
 
 # --- INTERFACE DO APLICATIVO REAL ---
 
-st.info("🔄 **Central Ativa:** Aguardando fotos do campo ou comandos da ESP32.")
+st.info("🔄 **Central Ativa:** Conectada ao Servidor Local. Aguardando fotos do campo.")
 
 # Caixa única de Upload de Foto Real do Celular
-foto_uploadeada = st.file_uploader("📸 Notou algo estranho ou tem uma dúvida? Insira a foto do celular aqui:", type=["jpg", "jpeg", "png"])
+foto_uploadeada = st.file_uploader("📸 Encontrou algo estranho no viveiro? Insira a foto do celular aqui:", type=["jpg", "jpeg", "png"])
 
 if foto_uploadeada and len(st.session_state.historico_chat) == 0:
-    if st.button("🔍 Enviar Foto para Diagnóstico Real", type="primary"):
-        with st.spinner("Analisando imagem com o cérebro do Llama via OpenRouter..."):
+    if st.button("🔍 Enviar Foto para Diagnóstico Real no seu PC", type="primary"):
+        with st.spinner("Enviando imagem para o seu computador e processando pelos artigos..."):
             try:
                 img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 
-                client = OpenAI(
-                    base_url="https://openrouter.ai",
-                    api_key=OPENROUTER_API_KEY,
-                    default_headers={
-                        "HTTP-Referer": "https://streamlit.io",
-                        "X-Title": "AgTech Acai Application"
-                    }
-                )
+                # Configura a comunicação direta com a API do AnythingLLM no seu computador
+                headers = {
+                    "Authorization": f"Bearer {API_KEY}",
+                    "Content-Type": "application/json"
+                }
                 
-                completion = client.chat.completions.create(
-                    model="google/gemini-2.5-flash:free",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": f"{CONTEXTO_CIENTIFICO}\n\nAnalise esta foto do viveiro de açaí e gere o relatório completo de acordo com suas diretrizes."},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/jpeg;base64,{img_base64}"
-                                    }
-                                }
-                            ]
-                        }
-                    ],
-                    temperature=0.2
-                )
+                # Prompt rígido que força o Llama do seu PC a obedecer os seus critérios de negócio
+                prompt_comando = f"""
+                [Análise de Imagem anexada via Base64: data:image/jpeg;base64,{img_base64}]
                 
-                # --- FUNÇÃO DE BLINDAGEM UNIVERSAL CONTRA ERRO DE STRING/OBJECT ---
-                # Se a resposta já veio direto como texto puro (String)
-                if isinstance(completion, str):
-                    texto_purificado = completion
-                # Se veio no formato de objeto padrão da OpenAI
-                elif hasattr(completion, 'choices') and completion.choices:
-                    texto_purificado = completion.choices[0].message.content
-                # Caso venha em outro formato alternativo de dicionário
-                elif isinstance(completion, dict) and "choices" in completion:
-                    texto_purificado = completion["choices"][0]["message"]["content"]
-                else:
-                    texto_purificado = str(completion)
+                Instruções obrigatórias para sua resposta:
+                1. Faça uma avaliação crítica, fluida e interacional com o produtor com base na foto e nos artigos de açaí.
+                2. Apresente os resultados detalhando uma lista de no máximo 5 possíveis protocolos técnicos para corrigir o problema.
+                3. Cite obrigatoriamente de qual artigo ou manual da Embrapa você extraiu a informação e faça uma avaliação crítica se é um periódico sério ou cartilha educativa.
+                4. Se não encontrar o problema nos artigos com certeza absoluta, diga estritamente que não encontrou na base de dados atual e que os desenvolvedores vão atualizar o sistema. Nunca invente dados falsos.
+                """
+                
+                payload = {
+                    "message": prompt_comando,
+                    "mode": "query" # Modo Query força a usar em 2026 APENAS os seus PDFs locais, sem inventar nada!
+                }
+                
+                # Envia o pacote direto para a URL do seu ngrok para a pasta do açaí
+                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspaces/manejo_acai/chat"
+                response = requests.post(url_final, headers=headers, json=payload, timeout=60)
+                
+                if response.status_code != 200:
+                    raise Exception(f"O seu computador rejeitou a mensagem (Erro {response.status_code}). Verifique se o AnythingLLM está aberto.")
+                
+                response_json = response.json()
+                texto_purificado = response_json["textResponse"]
                 
                 # Salva o relatório real gerado no histórico do app
                 st.session_state.historico_chat.append({
@@ -105,51 +86,39 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                 })
                 st.rerun()
             except Exception as e:
-                st.error(f"Erro na comunicação com o Servidor de IA: {str(e)}")
+                st.error(f"Erro na comunicação com o seu PC: {str(e)}. Certifique-se de que o ngrok e o AnythingLLM estão ligados em casa.")
 
 # --- DESIGN DA LINHA DO TEMPO DO CHAT FLUIDO ---
 if st.session_state.historico_chat:
     st.markdown("---")
-    st.write("💬 **Linha de Atendimento:**")
+    st.write("💬 **Linha de Atendimento Técnico Local:**")
     
     for msg in st.session_state.historico_chat:
         with st.chat_message(msg["autor"]):
             st.markdown(msg["texto"])
             if "foto_usuario" in msg:
-                st.image(msg["foto_usuario"], caption="📸 Imagem analisada pela IA", use_container_width=True)
+                st.image(msg["foto_usuario"], caption="📸 Imagem enviada ao servidor local", use_container_width=True)
 
-    # Campo de Chat contínuo para o produtor tirar dúvidas adicionais
-    if pergunta_complementar := st.chat_input("Continue a conversa com a IA dos artigos técnicos..."):
+    # Campo de Chat contínuo para o produtor continuar tirando dúvidas sobre a mesma ocorrência
+    if pergunta_complementar := st.chat_input("Continue a conversa com o Llama do seu PC..."):
         st.session_state.historico_chat.append({"autor": "user", "texto": pergunta_complementar})
         
-        with st.spinner("Buscando informações complementares na biblioteca..."):
+        with st.spinner("Consultando artigos locais..."):
             try:
-                client = OpenAI(
-                    base_url="https://openrouter.ai",
-                    api_key=OPENROUTER_API_KEY,
-                    default_headers={
-                        "HTTP-Referer": "https://streamlit.io",
-                        "X-Title": "AgTech Acai Application"
-                    }
-                )
-                historico_texto = "\n".join([f"{m['autor']}: {m['texto']}" for m in st.session_state.historico_chat[:-1]])
-                prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
+                headers = {
+                    "Authorization": f"Bearer {API_KEY}",
+                    "Content-Type": "application/json"
+                }
                 
-                completion_texto = client.chat.completions.create(
-                    model="google/gemini-2.5-flash:free",
-                    messages=[{"role": "user", "content": prompt_chat}],
-                    temperature=0.3
-                )
+                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspaces/manejo_acai/chat"
+                payload_chat = {
+                    "message": pergunta_complementar,
+                    "mode": "query"
+                }
                 
-                # --- MESMA BLINDAGEM UNIVERSAL PARA O CHAT ---
-                if isinstance(completion_texto, str):
-                    texto_purificado_chat = completion_texto
-                elif hasattr(completion_texto, 'choices') and completion_texto.choices:
-                    texto_purificado_chat = completion_texto.choices[0].message.content
-                elif isinstance(completion_texto, dict) and "choices" in completion_texto:
-                    texto_purificado_chat = completion_texto["choices"][0]["message"]["content"]
-                else:
-                    texto_purificado_chat = str(completion_texto)
+                response = requests.post(url_final, headers=headers, json=payload_chat, timeout=60)
+                response_json = response.json()
+                texto_purificado_chat = response_json["textResponse"]
                 
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
@@ -157,7 +126,7 @@ if st.session_state.historico_chat:
                 })
                 st.rerun()
             except Exception as e:
-                st.error(f"Erro no chat: {str(e)}")
+                st.error(f"Erro no chat local: {str(e)}")
 
     # Botão para limpar a tela
     st.write("")
