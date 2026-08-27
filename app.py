@@ -8,7 +8,7 @@ import base64
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Groq Cloud)")
+st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama Vision)")
 
 # --- CONFIGURAÇÃO DA CHAVE DO GROQ COM CUSTO ZERO ---
 GROQ_API_KEY = "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"
@@ -26,7 +26,7 @@ Diretrizes obrigatórias de resposta:
 1. Faça uma avaliação crítica, fluida e interacional com o produtor (como um agrônomo de verdade conversando no campo).
 2. Apresente os resultados detalhando até 5 possíveis protocolos técnicos e práticos para corrigir o problema encontrado. Ordene-os por relevância científica ou frequência de recomendação.
 3. Cite obrigatoriamente a fonte do artigo técnico para cada protocolo sugerido (Ex: Notas Técnicas da Embrapa, Manuais Oficiais, Periódicos Científicos). Faça uma avaliação crítica considerando se são periódicos indexados ou apenas cartilhas educativas.
-4. Se o produtor enviar uma foto e você NÃO conseguir identificar a praga, doença ou animal com certeza absoluta com base na literatura de açaí, diga estritamente que não encontrou na base de dados atual e que a equipe de desenvolvedores foi notificada para futuras atualizações. Nunca invente dados falsos (alucinações).
+4. Se o produtor enviar uma foto e você NÃO conseguir identificar a praga, doença ou animal com certeza absoluta com base na literatura de açaí, diga estritamente que não encontrou na base de dados atual e que a equipe de desenvolvedores foi notificada para futuras updates. Nunca invente dados falsos (alucinações).
 5. Se o produtor disser que já fez uma medida e não funcionou, mude a abordagem técnica imediatamente e sugere o 'Plano B' de contingência biológica ou isolamento das mudas.
 """
 
@@ -50,32 +50,45 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
             try:
                 # Converte a imagem real para enviar à IA
                 img_base64 = converter_imagem_para_base64(foto_uploadeada)
-                
-                # Inicializa o cliente da Groq
                 client = Groq(api_key=GROQ_API_KEY)
                 
-                # CORREÇÃO DA ESTRUTURA DO PACK DE CONTEÚDO (MESSAGES)
-                completion = client.chat.completions.create(
-                    model="openai/gpt-oss-20b",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
+                # Definição dos modelos oficiais de visão da Groq (Principal e Backup)
+                modelos_visao = ["llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"]
+                completion = None
+                erro_acumulado = ""
+
+                # Loop de Resiliência: Se o primeiro modelo falhar, tenta o segundo automaticamente
+                for modelo in modelos_visao:
+                    try:
+                        completion = client.chat.completions.create(
+                            model=modelo,
+                            messages=[
                                 {
-                                    "type": "text", 
-                                    "text": f"{CONTEXTO_CIENTIFICO}\n\nAnalise esta foto do viveiro de açaí e gere o relatório completo de acordo com suas diretrizes."
-                                },
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/jpeg;base64,{img_base64}"
-                                    }
+                                    "role": "user",
+                                    "content": [
+                                        {
+                                            "type": "text", 
+                                            "text": f"{CONTEXTO_CIENTIFICO}\n\nAnalise esta foto do viveiro de açaí e gere o relatório técnico completo de acordo com as suas diretrizes."
+                                        },
+                                        {
+                                            "type": "image_url",
+                                            "image_url": {
+                                                "url": f"data:image/jpeg;base64,{img_base64}"
+                                            }
+                                        }
+                                    ]
                                 }
-                            ]
-                        }
-                    ],
-                    temperature=0.2
-                )
+                            ],
+                            temperature=0.2
+                        )
+                        if completion:
+                            break # Sucesso, sai do loop
+                    except Exception as e_modelo:
+                        erro_acumulado = str(e_modelo)
+                        continue # Falhou, avança para o modelo de backup
+
+                if completion is None:
+                    raise Exception(f"Todos os modelos de visão falharam. Último relatório: {erro_acumulado}")
                 
                 # Salva o relatório real gerado no histórico do app
                 st.session_state.historico_chat.append({
@@ -109,13 +122,26 @@ if st.session_state.historico_chat:
                 
                 prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
                 
-                completion = client.chat.completions.create(
-                    model="qwen/qwen3.6-27b",
-                    messages=[{"role": "user", "content": prompt_chat}],
-                    temperature=0.3
-                )
+                # Modelos estáveis de texto puro da Groq (Principal e Backup)
+                modelos_texto = ["llama-3.3-70b-versatile", "llama3-70b-8192"]
+                completion_texto = None
                 
-                st.session_state.historico_chat.append({"autor": "assistant", "texto": completion.choices.message.content})
+                for mod_t in modelos_texto:
+                    try:
+                        completion_texto = client.chat.completions.create(
+                            model=mod_t,
+                            messages=[{"role": "user", "content": prompt_chat}],
+                            temperature=0.3
+                        )
+                        if completion_texto:
+                            break
+                    except:
+                        continue
+
+                if completion_texto is None:
+                    raise Exception("Os servidores de chat em texto estão temporariamente instáveis.")
+                
+                st.session_state.historico_chat.append({"autor": "assistant", "texto": completion_texto.choices.message.content})
                 st.rerun()
             except Exception as e:
                 st.error(f"Erro no chat: {e}")
