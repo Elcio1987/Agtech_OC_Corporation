@@ -11,7 +11,6 @@ st.title("🌱 AgTech - Consultor Agroflorestal")
 st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama & OpenRouter)")
 
 # --- CONFIGURAÇÃO SEGURA DA CHAVE DO OPENROUTER ---
-# Puxa a chave de forma invisível e segura do painel do Streamlit
 try:
     OPENROUTER_API_KEY = st.secrets["OPENROUTER_API_KEY"]
 except Exception:
@@ -38,7 +37,7 @@ Diretrizes obrigatórias de resposta:
 # Função para converter e otimizar a imagem para Base64 sem estourar limites de tokens da rede
 def converter_imagem_para_base64(uploaded_file):
     image = Image.open(uploaded_file)
-    max_size = (600, 600) # Mantém excelente nitidez visual e viaja super leve pela rede
+    max_size = (600, 600)
     image.thumbnail(max_size, Image.Resampling.LANCZOS)
     buffered = io.BytesIO()
     image.convert("RGB").save(buffered, format="JPEG", quality=75)
@@ -57,17 +56,15 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
             try:
                 img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 
-                # Inicializa o cliente oficial incluindo os cabeçalhos de identificação exigidos pelo OpenRouter
                 client = OpenAI(
                     base_url="https://openrouter.ai",
                     api_key=OPENROUTER_API_KEY,
                     default_headers={
-                        "HTTP-Referer": "https://streamlit.io", # Avisa ao OpenRouter a origem da requisição
-                        "X-Title": "AgTech Acai Application"    # Identifica o nome da sua Startup no servidor
+                        "HTTP-Referer": "https://streamlit.io",
+                        "X-Title": "AgTech Acai Application"
                     }
                 )
                 
-                # CHAMADA DO MODELO COMPATÍVEL COM FLUXOS DE VISÃO MULTIMODAL GRATUITA
                 completion = client.chat.completions.create(
                     model="google/gemini-2.5-flash:free",
                     messages=[
@@ -87,8 +84,18 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                     temperature=0.2
                 )
                 
-                # Extração nativa e limpa do texto gerado pela IA
-                texto_purificado = completion.choices[0].message.content
+                # --- FUNÇÃO DE BLINDAGEM UNIVERSAL CONTRA ERRO DE STRING/OBJECT ---
+                # Se a resposta já veio direto como texto puro (String)
+                if isinstance(completion, str):
+                    texto_purificado = completion
+                # Se veio no formato de objeto padrão da OpenAI
+                elif hasattr(completion, 'choices') and completion.choices:
+                    texto_purificado = completion.choices[0].message.content
+                # Caso venha em outro formato alternativo de dicionário
+                elif isinstance(completion, dict) and "choices" in completion:
+                    texto_purificado = completion["choices"][0]["message"]["content"]
+                else:
+                    texto_purificado = str(completion)
                 
                 # Salva o relatório real gerado no histórico do app
                 st.session_state.historico_chat.append({
@@ -98,7 +105,6 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                 })
                 st.rerun()
             except Exception as e:
-                # Se der erro, printa a mensagem descritiva real retornada pela rede
                 st.error(f"Erro na comunicação com o Servidor de IA: {str(e)}")
 
 # --- DESIGN DA LINHA DO TEMPO DO CHAT FLUIDO ---
@@ -135,9 +141,19 @@ if st.session_state.historico_chat:
                     temperature=0.3
                 )
                 
+                # --- MESMA BLINDAGEM UNIVERSAL PARA O CHAT ---
+                if isinstance(completion_texto, str):
+                    texto_purificado_chat = completion_texto
+                elif hasattr(completion_texto, 'choices') and completion_texto.choices:
+                    texto_purificado_chat = completion_texto.choices[0].message.content
+                elif isinstance(completion_texto, dict) and "choices" in completion_texto:
+                    texto_purificado_chat = completion_texto["choices"][0]["message"]["content"]
+                else:
+                    texto_purificado_chat = str(completion_texto)
+                
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
-                    "texto": completion_texto.choices[0].message.content
+                    "texto": texto_purificado_chat
                 })
                 st.rerun()
             except Exception as e:
