@@ -1,9 +1,8 @@
 import streamlit as st
+from openai import OpenAI
 from PIL import Image
 import io
 import base64
-import requests
-import json
 
 # Configura o design do aplicativo móvel da sua AgTech
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
@@ -11,11 +10,11 @@ st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layou
 st.title("🌱 AgTech - Consultor Agroflorestal")
 st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama & OpenRouter)")
 
-# --- CONFIGURAÇÃO DA CHAVE DO OPENROUTER VIA SEGREDOS SEGUROS ---
-# O código agora puxa a chave de forma invisível do painel do Streamlit, evitando bloqueios
+# --- CONFIGURAÇÃO SEGURA DA CHAVE DO OPENROUTER ---
+# Puxa a chave de forma invisível e segura do painel do Streamlit
 try:
     OPENROUTER_API_KEY = st.secrets["OPENROUTER_API_KEY"]
-except:
+except Exception:
     st.error("⚠️ Chave de API não configurada nos Secrets do Streamlit. Vá em Settings > Secrets e adicione OPENROUTER_API_KEY.")
     st.stop()
 
@@ -39,10 +38,10 @@ Diretrizes obrigatórias de resposta:
 # Função para converter e otimizar a imagem para Base64 sem estourar limites de tokens da rede
 def converter_imagem_para_base64(uploaded_file):
     image = Image.open(uploaded_file)
-    max_size = (600, 600) # Tamanho otimizado para a rede carregar com velocidade máxima
+    max_size = (600, 600) # Mantém excelente nitidez visual e viaja super leve pela rede
     image.thumbnail(max_size, Image.Resampling.LANCZOS)
     buffered = io.BytesIO()
-    image.convert("RGB").save(buffered, format="JPEG", quality=70)
+    image.convert("RGB").save(buffered, format="JPEG", quality=75)
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 # --- INTERFACE DO APLICATIVO REAL ---
@@ -54,19 +53,24 @@ foto_uploadeada = st.file_uploader("📸 Notou algo estranho ou tem uma dúvida?
 
 if foto_uploadeada and len(st.session_state.historico_chat) == 0:
     if st.button("🔍 Enviar Foto para Diagnóstico Real", type="primary"):
-        with st.spinner("Analisando imagem com a base científica estável..."):
+        with st.spinner("Analisando imagem com o cérebro do Llama via OpenRouter..."):
             try:
                 img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 
-                headers = {
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json"
-                }
+                # Inicializa o cliente oficial incluindo os cabeçalhos de identificação exigidos pelo OpenRouter
+                client = OpenAI(
+                    base_url="https://openrouter.ai",
+                    api_key=OPENROUTER_API_KEY,
+                    default_headers={
+                        "HTTP-Referer": "https://streamlit.io", # Avisa ao OpenRouter a origem da requisição
+                        "X-Title": "AgTech Acai Application"    # Identifica o nome da sua Startup no servidor
+                    }
+                )
                 
-                # Usando o modelo de alta estabilidade permanente do OpenRouter
-                payload = {
-                    "model": "google/gemini-2.5-flash:free",
-                    "messages": [
+                # CHAMADA DO MODELO COMPATÍVEL COM FLUXOS DE VISÃO MULTIMODAL GRATUITA
+                completion = client.chat.completions.create(
+                    model="google/gemini-2.5-flash:free",
+                    messages=[
                         {
                             "role": "user",
                             "content": [
@@ -80,19 +84,13 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                             ]
                         }
                     ],
-                    "temperature": 0.2
-                }
+                    temperature=0.2
+                )
                 
-                response = requests.post("https://openrouter.ai", headers=headers, data=json.dumps(payload))
+                # Extração nativa e limpa do texto gerado pela IA
+                texto_purificado = completion.choices[0].message.content
                 
-                # Captura o erro bruto em texto caso o servidor envie HTML
-                if response.status_code != 200:
-                    raise Exception(f"Erro no servidor (Código {response.status_code}): {response.text}")
-                    
-                response_json = response.json()
-                texto_purificado = response_json["choices"][0]["message"]["content"]
-                
-                # Salva o relatório gerado no histórico
+                # Salva o relatório real gerado no histórico do app
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
                     "texto": texto_purificado,
@@ -100,7 +98,8 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                 })
                 st.rerun()
             except Exception as e:
-                st.error(f"Erro na comunicação com o Servidor de IA: {e}")
+                # Se der erro, printa a mensagem descritiva real retornada pela rede
+                st.error(f"Erro na comunicação com o Servidor de IA: {str(e)}")
 
 # --- DESIGN DA LINHA DO TEMPO DO CHAT FLUIDO ---
 if st.session_state.historico_chat:
@@ -117,37 +116,32 @@ if st.session_state.historico_chat:
     if pergunta_complementar := st.chat_input("Continue a conversa com a IA dos artigos técnicos..."):
         st.session_state.historico_chat.append({"autor": "user", "texto": pergunta_complementar})
         
-        with st.spinner("Buscando informações complementares..."):
+        with st.spinner("Buscando informações complementares na biblioteca..."):
             try:
-                headers = {
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json"
-                }
-                
+                client = OpenAI(
+                    base_url="https://openrouter.ai",
+                    api_key=OPENROUTER_API_KEY,
+                    default_headers={
+                        "HTTP-Referer": "https://streamlit.io",
+                        "X-Title": "AgTech Acai Application"
+                    }
+                )
                 historico_texto = "\n".join([f"{m['autor']}: {m['texto']}" for m in st.session_state.historico_chat[:-1]])
                 prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
                 
-                payload_chat = {
-                    "model": "google/gemini-2.5-flash:free",
-                    "messages": [{"role": "user", "content": prompt_chat}],
-                    "temperature": 0.3
-                }
-                
-                response = requests.post("https://openrouter.ai", headers=headers, data=json.dumps(payload_chat))
-                
-                if response.status_code != 200:
-                    raise Exception(f"Erro no chat (Código {response.status_code}): {response.text}")
-                    
-                response_json = response.json()
-                texto_purificado_chat = response_json["choices"][0]["message"]["content"]
+                completion_texto = client.chat.completions.create(
+                    model="google/gemini-2.5-flash:free",
+                    messages=[{"role": "user", "content": prompt_chat}],
+                    temperature=0.3
+                )
                 
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
-                    "texto": texto_purificado_chat
+                    "texto": completion_texto.choices[0].message.content
                 })
                 st.rerun()
             except Exception as e:
-                st.error(f"Erro no chat: {e}")
+                st.error(f"Erro no chat: {str(e)}")
 
     # Botão para limpar a tela
     st.write("")
