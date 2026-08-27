@@ -8,7 +8,7 @@ import base64
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama 3.2 & Groq)")
+st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Groq Cloud)")
 
 # --- CONFIGURAÇÃO DA CHAVE DO GROQ COM CUSTO ZERO ---
 # Cole aqui a sua nova chave gsk_ copiada do site console.groq.com
@@ -55,9 +55,9 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                 # Inicializa o cliente da Groq
                 client = Groq(api_key=GROQ_API_KEY)
                 
-                # Dispara a requisição usando o modelo Llama de Visão Computacional
+                # CORREÇÃO CRÍTICA: Atualizado para o modelo de visão oficial ativo em 2026
                 completion = client.chat.completions.create(
-                    model="llama-3.2-11b-vision-preview",
+                    model="meta-llama/llama-4-scout-17b-16e-instruct",
                     messages=[
                         {
                             "role": "user",
@@ -107,8 +107,9 @@ if st.session_state.historico_chat:
                 
                 prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
                 
+                # CORREÇÃO CRÍTICA: Atualizado para o modelo de texto ativo de alta capacidade
                 completion = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile", # Modelo avançado de texto para o chat contínuo
+                    model="openai/gpt-oss-120b",
                     messages=[{"role": "user", "content": prompt_chat}],
                     temperature=0.3
                 )
