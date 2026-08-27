@@ -3,7 +3,6 @@ from openai import OpenAI
 from PIL import Image
 import io
 import base64
-import json
 
 # Configura o design do aplicativo móvel da sua AgTech
 st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
@@ -30,34 +29,6 @@ Diretrizes obrigatórias de resposta:
 4. Se o produtor enviar uma foto e você NÃO conseguir identificar a praga, doença ou animal com certeza absoluta com base na literatura de açaí, diga estritamente que não encontrou na base de dados atual e que a equipe de desenvolvedores foi notificada para futuras updates. Nunca invente dados falsos (alucinações).
 5. Se o produtor disser que já fez uma medida e não funcionou, mude a abordagem técnica imediatamente e sugere o 'Plano B' de contingência biológica ou isolamento das mudas.
 """
-
-# FUNÇÃO EXTRATORA INTELIGENTE: Evita o erro 'str object has no attribute choices'
-def extrair_texto_da_resposta(resposta_bruta):
-    # Se o OpenRouter já devolveu o texto puro diretamente como string
-    if isinstance(resposta_bruta, str):
-        try:
-            # Tenta decodificar caso seja um JSON em formato de texto
-            dados_json = json.loads(resposta_bruta)
-            if "choices" in dados_json:
-                return dados_json["choices"][0]["message"]["content"]
-            elif "error" in dados_json:
-                return f"Erro reportado pelo servidor: {dados_json['error']['message']}"
-            else:
-                return resposta_bruta
-        except:
-            # Se for texto comum puro, retorna ele mesmo
-            return resposta_bruta
-            
-    # Se o OpenRouter devolveu no formato padrão de objeto estruturado da OpenAI
-    try:
-        if hasattr(resposta_bruta, "choices") and len(resposta_bruta.choices) > 0:
-            return resposta_bruta.choices[0].message.content
-        elif hasattr(resposta_bruta, "content"):
-            return resposta_bruta.content
-        else:
-            return str(resposta_bruta)
-    except Exception as e:
-        return f"Processado com sucesso, mas houve uma divergência de exibição. Resposta recebida: {str(resposta_bruta)}"
 
 # Função para converter e otimizar a imagem para Base64 sem estourar limites de tokens da rede
 def converter_imagem_para_base64(uploaded_file):
@@ -107,8 +78,8 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                     temperature=0.2
                 )
                 
-                # Usa a nova função extratora inteligente para blindar o resultado
-                texto_purificado = extrair_texto_da_resposta(completion)
+                # EXTRAÇÃO PURIFICADA RIGOROSA: Lê direto do dicionário interno de escolhas da API
+                texto_purificado = completion.choices[0].message.content
                 
                 # Salva o relatório gerado no histórico do app
                 st.session_state.historico_chat.append({
@@ -152,8 +123,8 @@ if st.session_state.historico_chat:
                     temperature=0.3
                 )
                 
-                # Usa a mesma função extratora inteligente para blindar o chat contínuo
-                texto_purificado_chat = extrair_texto_da_resposta(completion_texto)
+                # EXTRAÇÃO PURIFICADA RIGOROSA DO TEXTO COMPLEMENTAR
+                texto_purificado_chat = completion_texto.choices[0].message.content
                 
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
