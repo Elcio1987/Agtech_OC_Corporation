@@ -29,10 +29,11 @@ if "historico_chat" not in st.session_state:
 # Função para converter e comprimir a imagem pesada do celular
 def converter_imagem_para_base64(uploaded_file):
     image = Image.open(uploaded_file)
-    max_size = (600, 600)
+    max_size = (512, 512) # Tamanho ideal para o Llama processar os pixels com rapidez
     image.thumbnail(max_size, Image.Resampling.LANCZOS)
     buffered = io.BytesIO()
     image.convert("RGB").save(buffered, format="JPEG", quality=65)
+    # Retorna o Base64 puro, sem o cabeçalho de URL que causava erro no Windows
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 # --- INTERFACE DO APLICATIVO REAL ---
@@ -46,31 +47,28 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
     st.success("✅ Foto carregada na memória do aplicativo com sucesso!")
     
     if st.button("🔍 Enviar Foto para Diagnóstico Real no seu PC", type="primary", use_container_width=True):
-        with st.spinner("Enviando imagem para o seu computador e processando pelos artigos..."):
+        with st.spinner("Enviando imagem para o seu computador..."):
             try:
-                img_base64 = converter_imagem_para_base64(foto_uploadeada)
+                img_base64_pura = converter_imagem_para_base64(foto_uploadeada)
                 
                 headers = {
                     "Authorization": f"Bearer {API_KEY}",
                     "Content-Type": "application/json"
                 }
                 
-                # CORREÇÃO CRÍTICA DE VISÃO: Injetamos a imagem embutida de forma direta e limpa no texto
-                # Isso remove o campo 'attachments' que causava o erro interno do split() no PC
-                prompt_comando = f"""
-                Analise cuidadosamente esta imagem anexada em formato Base64: 
-                data:image/jpeg;base64,{img_base64}
+                prompt_comando = "Analise cuidadosamente esta imagem do canteiro de açaí que foi anexada e gere um relatório técnico fluido e interacional com o produtor (como um agrônomo no campo). Apresente até 5 protocolos práticos para corrigir o problema e cite obrigatoriamente de qual artigo da Embrapa você extraiu a informação. Se não encontrar o problema na base de dados, avise que a equipe foi notificada."
                 
-                Instruções obrigatórias para sua resposta com base nos artigos de açaí:
-                1. Faça uma avaliação crítica, fluida e interacional com o produtor (como um agrônomo de verdade conversando no campo).
-                2. Apresente os resultados detalhando uma lista de no máximo 5 possíveis protocolos técnicos para corrigir o problema. Ordene-os por relevância científica.
-                3. Cite obrigatoriamente de qual artigo ou manual da Embrapa você extraiu a informação e faça uma avaliação crítica se é um periódico sério ou cartilha educativa.
-                4. Se não encontrar o problema nos artigos com certeza absoluta, diga estritamente que não encontrou na base de dados atual e que os desenvolvedores vão atualizar o sistema. Nunca invente dados falsos.
-                """
-                
+                # ESTRUTURA OFICIAL EXIGIDA PELO ANYTHINGLLM DESKTOP PARA ATIVAR O MOTOR DE VISÃO
                 payload = {
+                    "mode": "query",
                     "message": prompt_comando,
-                    "mode": "query"
+                    "attachments": [
+                        {
+                            "name": "foto_campo.jpg",
+                            "mimeType": "image/jpeg",
+                            "content": img_base64_pura
+                        }
+                    ]
                 }
                 
                 # ROTA DE WORKSPACE LOCAL
