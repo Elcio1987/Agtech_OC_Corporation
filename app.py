@@ -9,18 +9,14 @@ import base64
 st.set_page_config(page_title="AgTech Açaí - Local", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Seu PC Local & Llama)")
+st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama 3.2 Vision)")
 
 # --- CONFIGURAÇÃO INVISÍVEL VIA SECRETS DO STREAMLIT ---
 try:
     URL_NGROK = st.secrets["URL_NGROK_LOCAL"]
-    API_KEY = st.secrets["ANYTHINGLLM_API_KEY"]
 except Exception:
-    st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL e ANYTHINGLLM_API_KEY em Settings > Secrets.")
+    st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL em Settings > Secrets.")
     st.stop()
-
-# Nome da sua pasta configurado de forma simples no AnythingLLM
-SLUG_DA_SUA_PASTA = "agtech"
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
 if "historico_chat" not in st.session_state:
@@ -29,11 +25,10 @@ if "historico_chat" not in st.session_state:
 # Função para converter e comprimir a imagem pesada do celular
 def converter_imagem_para_base64(uploaded_file):
     image = Image.open(uploaded_file)
-    max_size = (512, 512) # Tamanho ideal para o Llama processar os pixels com rapidez
+    max_size = (512, 512) # Tamanho ideal focado em velocidade e nitidez para o Llama 3.2
     image.thumbnail(max_size, Image.Resampling.LANCZOS)
     buffered = io.BytesIO()
     image.convert("RGB").save(buffered, format="JPEG", quality=65)
-    # Retorna o Base64 puro, sem o cabeçalho de URL que causava erro no Windows
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 # --- INTERFACE DO APLICATIVO REAL ---
@@ -51,41 +46,32 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
             try:
                 img_base64_pura = converter_imagem_para_base64(foto_uploadeada)
                 
-                headers = {
-                    "Authorization": f"Bearer {API_KEY}",
-                    "Content-Type": "application/json"
-                }
-                
-                prompt_comando = "Analise cuidadosamente esta imagem do canteiro de açaí que foi anexada e gere um relatório técnico fluido e interacional com o produtor (como um agrônomo no campo). Apresente até 5 protocolos práticos para corrigir o problema e cite obrigatoriamente de qual artigo da Embrapa você extraiu a informação. Se não encontrar o problema na base de dados, avise que a equipe foi notificada."
-                
-                # ESTRUTURA OFICIAL EXIGIDA PELO ANYTHINGLLM DESKTOP PARA ATIVAR O MOTOR DE VISÃO
+                # ESTRUTURA OFICIAL E NATIVA DO OLLAMA VISION COMPLIENT 2026
+                # Passa a imagem de forma nativa e pura pela API padrão do Llama
                 payload = {
-                    "mode": "query",
-                    "message": prompt_comando,
-                    "attachments": [
+                    "model": "llama3.2-vision:latest",
+                    "messages": [
                         {
-                            "name": "foto_campo.jpg",
-                            "mimeType": "image/jpeg",
-                            "content": img_base64_pura
+                            "role": "user",
+                            "content": "Analise cuidadosamente esta imagem do canteiro de açaí e gere um relatório técnico fluido e interacional com o produtor (como um agrônomo no campo). Apresente até 5 protocolos práticos baseados nas Notas Técnicas da Embrapa para corrigir o problema identificado e cite obrigatoriamente as fontes científicas.",
+                            "images": [img_base64_pura]
                         }
-                    ]
+                    ],
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.2
+                    }
                 }
                 
-                # ROTA DE WORKSPACE LOCAL
-                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspace/{SLUG_DA_SUA_PASTA}/chat"
-                response = requests.post(url_final, headers=headers, json=payload, timeout=120)
+                # ROTA DIRETA DA API DO OLLAMA: Envia direto para o motor de inteligência artificial
+                url_final = f"{URL_NGROK.rstrip('/')}/api/chat"
+                response = requests.post(url_final, json=payload, timeout=120)
                 
                 if response.status_code != 200:
                     raise Exception(f"O seu computador rejeitou a mensagem (Erro {response.status_code}). Detalhe: {response.text}")
                 
                 response_json = response.json()
-                
-                if "textResponse" in response_json:
-                    texto_purificado = response_json["textResponse"]
-                elif "response" in response_json:
-                    texto_purificado = response_json["response"]
-                else:
-                    texto_purificado = str(response_json)
+                texto_purificado = response_json["message"]["content"]
                 
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
@@ -94,7 +80,7 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                 })
                 st.rerun()
             except Exception as e:
-                st.error(f"Erro na comunicação com o seu PC: {str(e)}. Certifique-se de que o ngrok e o AnythingLLM estão ligados em casa.")
+                st.error(f"Erro na comunicação com o seu PC: {str(e)}. Certifique-se de que o ngrok está rodando na porta 11434.")
 
 # --- DESIGN DA LINHA DO TEMPO DO CHAT FLUIDO ---
 if st.session_state.historico_chat:
@@ -112,26 +98,22 @@ if st.session_state.historico_chat:
         
         with st.spinner("Consultando artigos locais..."):
             try:
-                headers = {
-                    "Authorization": f"Bearer {API_KEY}",
-                    "Content-Type": "application/json"
-                }
-                
-                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspace/{SLUG_DA_SUA_PASTA}/chat"
                 payload_chat = {
-                    "message": pergunta_complementar,
-                    "mode": "query"
+                    "model": "llama3.2-vision:latest",
+                    "messages": [
+                        {"role": "system", "content": "Você é o especialista em IA agroflorestal focado em Açaí de Terra Firme. Responda seguindo as diretrizes técnicas da Embrapa."},
+                        {"role": "user", "content": pergunta_complementar}
+                    ],
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.3
+                    }
                 }
                 
-                response = requests.post(url_final, headers=headers, json=payload_chat, timeout=120)
+                url_final = f"{URL_NGROK.rstrip('/')}/api/chat"
+                response = requests.post(url_final, json=payload_chat, timeout=120)
                 response_json = response.json()
-                
-                if "textResponse" in response_json:
-                    texto_purificado_chat = response_json["textResponse"]
-                elif "response" in response_json:
-                    texto_purificado_chat = response_json["response"]
-                else:
-                    texto_purificado_chat = str(response_json)
+                texto_purificado_chat = response_json["message"]["content"]
                 
                 st.session_state.historico_chat.append({
                     "autor": "assistant", 
