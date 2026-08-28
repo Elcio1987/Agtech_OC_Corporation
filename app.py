@@ -19,9 +19,6 @@ except Exception:
     st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL e ANYTHINGLLM_API_KEY em Settings > Secrets.")
     st.stop()
 
-# Nome da sua pasta configurado de forma simples no AnythingLLM
-SLUG_DA_SUA_PASTA = "agtech"
-
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
 if "historico_chat" not in st.session_state:
     st.session_state.historico_chat = []
@@ -72,8 +69,8 @@ if foto_uploadeada:
                     "mode": "query"
                 }
                 
-                # CORREÇÃO DEFINITIVA DA ROTA INTERNA: workspace (no singular) conforme padrão do app
-                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspace/{SLUG_DA_SUA_PASTA}/chat"
+                # ROTA GLOBAL PURIFICADA: Ignora o nome da pasta e joga direto no chat do Workspace ativo!
+                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/chat"
                 response = requests.post(url_final, headers=headers, json=payload, timeout=90)
                 
                 if response.status_code != 200:
@@ -118,8 +115,8 @@ if st.session_state.historico_chat:
                     "Content-Type": "application/json"
                 }
                 
-                # AJUSTE DA ROTA NO CHAT CONTÍNUO
-                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspace/{SLUG_DA_SUA_PASTA}/chat"
+                # MESMA ROTA GLOBAL AJUSTADA NO CHAT CONTÍNUO
+                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/chat"
                 payload_chat = {
                     "message": pergunta_complementar,
                     "mode": "query"
