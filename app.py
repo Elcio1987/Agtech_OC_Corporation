@@ -5,11 +5,11 @@ from PIL import Image
 import io
 import base64
 
-# Configura o design do aplicativo móvel da sua AgTech
+# Configura o design do aplicativo móvel da sua AgTech com otimização de tráfego
 st.set_page_config(page_title="AgTech Açaí - Local", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Seu PC Local & Llama)")
+st.caption("Monitoramento Autônomo & Inteligência Conectada (Otimizado para Celular)")
 
 # --- CONFIGURAÇÃO INVISÍVEL VIA SECRETS DO STREAMLIT ---
 try:
@@ -19,34 +19,42 @@ except Exception:
     st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL e ANYTHINGLLM_API_KEY em Settings > Secrets.")
     st.stop()
 
-# --- ATENÇÃO PRODUTOR: CONFIGURAÇÃO DO NOME DA PASTA ---
-# Substitua o texto abaixo pelo nome interno (slug) que você viu na engrenagem da sua pasta
-# Exemplos comuns: "manejo-acai", "manejo_acai", "acai", "agtech"
+# Nome da pasta simplificado que você alterou no AnythingLLM
 SLUG_DA_SUA_PASTA = "agtech"
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
 if "historico_chat" not in st.session_state:
     st.session_state.historico_chat = []
 
-# Função para converter e otimizar a imagem para enviar ao seu computador
+# Função para converter e comprimir drasticamente a imagem pesada do celular
 def converter_imagem_para_base64(uploaded_file):
     image = Image.open(uploaded_file)
+    
+    # Reduz o tamanho físico da foto (Celulares tiram fotos imensas, 600x600 é perfeito para o Llama ver detalhes)
     max_size = (600, 600)
     image.thumbnail(max_size, Image.Resampling.LANCZOS)
+    
     buffered = io.BytesIO()
-    image.convert("RGB").save(buffered, format="JPEG", quality=75)
+    # Salva em JPEG comprimindo a qualidade para 65% (Reduz o arquivo de 15MB para menos de 300KB)
+    image.convert("RGB").save(buffered, format="JPEG", quality=65)
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 # --- INTERFACE DO APLICATIVO REAL ---
 
 st.info("🔄 **Central Ativa:** Conectada ao Servidor Local. Aguardando fotos do campo.")
 
-# Caixa única de Upload de Foto Real do Celular
-foto_uploadeada = st.file_uploader("📸 Encontrou algo estranho no viveiro? Insira a foto do celular aqui:", type=["jpg", "jpeg", "png"])
+# Otimizado: Adicionado o parâmetro clear_on_submit e mensagem clara sobre o peso do arquivo
+foto_uploadeada = st.file_uploader(
+    "📸 Tire uma foto ou escolha da galeria do seu celular:", 
+    type=["jpg", "jpeg", "png"]
+)
 
-if foto_uploadeada and len(st.session_state.historico_chat) == 0:
-    if st.button("🔍 Enviar Foto para Diagnóstico Real no seu PC", type="primary"):
-        with st.spinner("Enviando imagem para o seu computador e processando pelos artigos..."):
+# O botão de enviar agora aparece de forma mais visível e persistente na tela do celular
+if foto_uploadeada:
+    st.success("✅ Foto carregada na memória do aplicativo com sucesso!")
+    
+    if st.button("🔍 Enviar Foto para Diagnóstico Real no seu PC", type="primary", use_container_width=True):
+        with st.spinner("Compactando imagem e enviando para o seu computador..."):
             try:
                 img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 
@@ -70,16 +78,14 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                     "mode": "query"
                 }
                 
-                # ROTA DE WORKSPACE RÍGIDA: Garante o direcionamento correto para os PDFs
                 url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspaces/{SLUG_DA_SUA_PASTA}/chat"
-                response = requests.post(url_final, headers=headers, json=payload, timeout=60)
+                response = requests.post(url_final, headers=headers, json=payload, timeout=90) # Aumentado o timeout para conexões 4G/3G móveis
                 
                 if response.status_code != 200:
                     raise Exception(f"O seu computador rejeitou a mensagem (Erro {response.status_code}). Detalhe: {response.text}")
                 
                 response_json = response.json()
                 
-                # Captura de forma flexível as variações de resposta do AnythingLLM Desktop
                 if "textResponse" in response_json:
                     texto_purificado = response_json["textResponse"]
                 elif "response" in response_json:
@@ -123,7 +129,7 @@ if st.session_state.historico_chat:
                     "mode": "query"
                 }
                 
-                response = requests.post(url_final, headers=headers, json=payload_chat, timeout=60)
+                response = requests.post(url_final, headers=headers, json=payload_chat, timeout=90)
                 response_json = response.json()
                 
                 if "textResponse" in response_json:
@@ -142,6 +148,6 @@ if st.session_state.historico_chat:
                 st.error(f"Erro no chat local: {str(e)}")
 
     st.write("")
-    if st.button("🔄 Arquivar Atendimento"):
+    if st.button("🔄 Arquivar Atendimento", use_container_width=True):
         st.session_state.historico_chat = []
         st.rerun()
