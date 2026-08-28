@@ -55,31 +55,27 @@ if foto_uploadeada and len(st.session_state.historico_chat) == 0:
                     "Content-Type": "application/json"
                 }
                 
-                # Prompt limpo e focado strictly nas regras da Embrapa
-                prompt_comando = """
-                Analise cuidadosamente a imagem que foi anexada a este atendimento e gere um relatório agroflorestal seguindo estas diretrizes obrigatórias:
+                # CORREÇÃO CRÍTICA DE VISÃO: Injetamos a imagem embutida de forma direta e limpa no texto
+                # Isso remove o campo 'attachments' que causava o erro interno do split() no PC
+                prompt_comando = f"""
+                Analise cuidadosamente esta imagem anexada em formato Base64: 
+                data:image/jpeg;base64,{img_base64}
+                
+                Instruções obrigatórias para sua resposta com base nos artigos de açaí:
                 1. Faça uma avaliação crítica, fluida e interacional com o produtor (como um agrônomo de verdade conversando no campo).
                 2. Apresente os resultados detalhando uma lista de no máximo 5 possíveis protocolos técnicos para corrigir o problema. Ordene-os por relevância científica.
                 3. Cite obrigatoriamente de qual artigo ou manual da Embrapa você extraiu a informação e faça uma avaliação crítica se é um periódico sério ou cartilha educativa.
                 4. Se não encontrar o problema nos artigos com certeza absoluta, diga estritamente que não encontrou na base de dados atual e que os desenvolvedores vão atualizar o sistema. Nunca invente dados falsos.
                 """
                 
-                # AJUSTE DE ENGENHARIA MULTIMODAL: Passando o texto e os dados da imagem em estruturas separadas aceitas pela API
                 payload = {
                     "message": prompt_comando,
-                    "mode": "query",
-                    "attachments": [
-                        {
-                            "name": "foto_campo.jpg",
-                            "mimeType": "image/jpeg",
-                            "content": img_base64
-                        }
-                    ]
+                    "mode": "query"
                 }
                 
-                # ROTA COMPATÍVEL COM O SISTEMA DESKTOP INDUSTRIAL
+                # ROTA DE WORKSPACE LOCAL
                 url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspace/{SLUG_DA_SUA_PASTA}/chat"
-                response = requests.post(url_final, headers=headers, json=payload, timeout=90)
+                response = requests.post(url_final, headers=headers, json=payload, timeout=120)
                 
                 if response.status_code != 200:
                     raise Exception(f"O seu computador rejeitou a mensagem (Erro {response.status_code}). Detalhe: {response.text}")
@@ -129,7 +125,7 @@ if st.session_state.historico_chat:
                     "mode": "query"
                 }
                 
-                response = requests.post(url_final, headers=headers, json=payload_chat, timeout=90)
+                response = requests.post(url_final, headers=headers, json=payload_chat, timeout=120)
                 response_json = response.json()
                 
                 if "textResponse" in response_json:
