@@ -1,127 +1,120 @@
 import streamlit as st
 import requests
 import json
-from PIL import Image
-import io
-import base64
 
-# Configura o design do aplicativo móvel da sua AgTech com otimização de tráfego
-st.set_page_config(page_title="AgTech Açaí - Local", page_icon="🌱", layout="centered")
+# Configura o design do aplicativo móvel da sua AgTech de forma limpa e responsiva
+st.set_page_config(page_title="AgTech Açaí - Central", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Llama 3.2 Vision)")
+st.caption("Central de Inteligência Conectada (Powered by OpenRouter Cloud - 100% Gratuito)")
 
-# --- CONFIGURAÇÃO INVISÍVEL VIA SECRETS DO STREAMLIT ---
+# --- CONFIGURAÇÃO DA CHAVE DO OPENROUTER COM CUSTO ZERO ---
+# Puxa a sua chave de API permanente salva nos Secrets do Streamlit
 try:
-    URL_NGROK = st.secrets["URL_NGROK_LOCAL"]
+    OPENROUTER_API_KEY = st.secrets["OPENROUTER_API_KEY"]
 except Exception:
-    st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL em Settings > Secrets.")
+    st.error("⚠️ Chave de API não configurada nos Secrets do Streamlit. Vá em Settings > Secrets e adicione OPENROUTER_API_KEY.")
     st.stop()
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
 if "historico_chat" not in st.session_state:
     st.session_state.historico_chat = []
 
-# Função para converter e comprimir a imagem pesada do celular
-def converter_imagem_para_base64(uploaded_file):
-    image = Image.open(uploaded_file)
-    max_size = (512, 512) # Tamanho ideal focado em velocidade e nitidez para o Llama 3.2
-    image.thumbnail(max_size, Image.Resampling.LANCZOS)
-    buffered = io.BytesIO()
-    image.convert("RGB").save(buffered, format="JPEG", quality=65)
-    return base64.b64encode(buffered.getvalue()).decode('utf-8')
+# Contexto científico fixo que força a IA a agir como o pesquisador de Açaí da Embrapa
+CONTEXTO_CIENTIFICO = """
+Você é o especialista em Inteligência Artificial da AgTech focado em Sistemas Agroflorestais (SAFs) de Açaí de Terra Firme.
+Sua missão é dar suporte aos produtores rurais analisando perguntas sobre sintomas, pragas e manejo.
+
+Diretrizes obrigatórias de resposta:
+1. Faça uma avaliação crítica, fluida e interacional com o produtor (como um agrônomo de verdade conversando no campo).
+2. Apresente os resultados detalhando até 5 possíveis protocolos técnicos e práticos para corrigir o problema relatado. Ordene-os por relevância científica ou frequência de recomendação das Notas Técnicas da Embrapa.
+3. Cite obrigatoriamente a fonte do artigo técnico ou manual oficial para cada protocolo sugerido (Ex: Notas Técnicas da Embrapa, Manuais Oficiais, Periódicos Científicos).
+4. Se o sintoma relatado não constar na literatura de açaí de terra firme ou você não tiver certeza absoluta, diga estritamente que não encontrou na base de dados atual e que a equipe de desenvolvedores foi notificada para futuras atualizações. Nunca invente dados falsos (alucinações).
+5. Se o produtor disser que já fez uma medida e não funcionou, mude a abordagem técnica imediatamente e sugira o 'Plano B' de contingência biológica ou isolamento das mudas.
+"""
 
 # --- INTERFACE DO APLICATIVO REAL ---
 
-st.info("🔄 **Central Ativa:** Conectada ao Servidor Local. Aguardando fotos do campo.")
+st.info("🔄 **Consultor Agroflorestal Ativo:** Digite o problema detectado em campo ou no viveiro para consultar as notas técnicas da Embrapa.")
 
-# Caixa única de Upload de Foto Real do Celular
-foto_uploadeada = st.file_uploader("📸 Tire uma foto ou escolha da galeria do seu celular:", type=["jpg", "jpeg", "png"])
+# Campo único de entrada de texto no topo para iniciar o atendimento
+relato_produtor = st.text_area("📝 Descreva aqui o problema, a praga identificada pela câmera ou o sintoma da planta:")
 
-if foto_uploadeada and len(st.session_state.historico_chat) == 0:
-    st.success("✅ Foto carregada na memória do aplicativo com sucesso!")
-    
-    if st.button("🔍 Enviar Foto para Diagnóstico Real no seu PC", type="primary", use_container_width=True):
-        with st.spinner("Enviando imagem para o seu computador..."):
+if relato_produtor and len(st.session_state.historico_chat) == 0:
+    if st.button("🔍 Consultar Base Científica", type="primary", use_container_width=True):
+        with st.spinner("Varrendo manuais técnicos e cruzando dados..."):
             try:
-                img_base64_pura = converter_imagem_para_base64(foto_uploadeada)
-                
-                # ESTRUTURA OFICIAL E NATIVA DO OLLAMA VISION COMPLIENT 2026
-                # Passa a imagem de forma nativa e pura pela API padrão do Llama
-                payload = {
-                    "model": "llama3.2-vision:latest",
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": "Analise cuidadosamente esta imagem do canteiro de açaí e gere um relatório técnico fluido e interacional com o produtor (como um agrônomo no campo). Apresente até 5 protocolos práticos baseados nas Notas Técnicas da Embrapa para corrigir o problema identificado e cite obrigatoriamente as fontes científicas.",
-                            "images": [img_base64_pura]
-                        }
-                    ],
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.2
-                    }
+                # Configuração dos cabeçalhos oficiais exigidos pelo OpenRouter
+                headers = {
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://streamlit.io",
+                    "X-Title": "AgTech Acai Application"
                 }
                 
-                # ROTA DIRETA DA API DO OLLAMA: Envia direto para o motor de inteligência artificial
-                url_final = f"{URL_NGROK.rstrip('/')}/api/chat"
-                response = requests.post(url_final, json=payload, timeout=120)
+                # Montagem do prompt combinando o cérebro da Embrapa com a dúvida real
+                prompt_final = f"{CONTEXTO_CIENTIFICO}\n\nRelato do Produtor em Campo: '{relato_produtor}'\n\nGere o relatório estruturado obedecendo rigorosamente às suas diretrizes."
+                
+                payload = {
+                    "model": "google/gemini-2.5-flash:free",
+                    "messages": [{"role": "user", "content": prompt_final}],
+                    "temperature": 0.2
+                }
+                
+                # Dispara a requisição direto para a internet estável
+                response = requests.post("https://openrouter.ai", headers=headers, data=json.dumps(payload))
                 
                 if response.status_code != 200:
-                    raise Exception(f"O seu computador rejeitou a mensagem (Erro {response.status_code}). Detalhe: {response.text}")
-                
+                    raise Exception(f"Erro no servidor (Código {response.status_code})")
+                    
                 response_json = response.json()
-                texto_purificado = response_json["message"]["content"]
+                texto_purificado = response_json["choices"][0]["message"]["content"]
                 
-                st.session_state.historico_chat.append({
-                    "autor": "assistant", 
-                    "texto": texto_purificado,
-                    "foto_usuario": foto_uploadeada
-                })
+                # Salva o resultado no histórico de chat
+                st.session_state.historico_chat.append({"autor": "assistant", "texto": texto_purificado})
                 st.rerun()
             except Exception as e:
-                st.error(f"Erro na comunicação com o seu PC: {str(e)}. Certifique-se de que o ngrok está rodando na porta 11434.")
+                st.error(f"Erro na comunicação com a API: {str(e)}. Tente novamente.")
 
 # --- DESIGN DA LINHA DO TEMPO DO CHAT FLUIDO ---
 if st.session_state.historico_chat:
     st.markdown("---")
-    st.write("💬 **Linha de Atendimento Técnico Local:**")
+    st.write("💬 **Linha de Atendimento Técnico:**")
     
     for msg in st.session_state.historico_chat:
         with st.chat_message(msg["autor"]):
             st.markdown(msg["texto"])
-            if "foto_usuario" in msg:
-                st.image(msg["foto_usuario"], caption="📸 Imagem enviada ao servidor local", use_container_width=True)
 
-    if pergunta_complementar := st.chat_input("Continue a conversa com o Llama do seu PC..."):
+    # Campo de Chat contínuo para o produtor continuar tirando dúvidas sobre a mesma ocorrência
+    if pergunta_complementar := st.chat_input("Continue a conversa com a IA dos artigos técnicos..."):
         st.session_state.historico_chat.append({"autor": "user", "texto": pergunta_complementar})
         
-        with st.spinner("Consultando artigos locais..."):
+        with st.spinner("Buscando informações complementares..."):
             try:
-                payload_chat = {
-                    "model": "llama3.2-vision:latest",
-                    "messages": [
-                        {"role": "system", "content": "Você é o especialista em IA agroflorestal focado em Açaí de Terra Firme. Responda seguindo as diretrizes técnicas da Embrapa."},
-                        {"role": "user", "content": pergunta_complementar}
-                    ],
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.3
-                    }
+                headers = {
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://streamlit.io",
+                    "X-Title": "AgTech Acai Application"
                 }
                 
-                url_final = f"{URL_NGROK.rstrip('/')}/api/chat"
-                response = requests.post(url_final, json=payload_chat, timeout=120)
-                response_json = response.json()
-                texto_purificado_chat = response_json["message"]["content"]
+                historico_texto = "\n".join([f"{m['autor']}: {m['texto']}" for m in st.session_state.historico_chat[:-1]])
+                prompt_chat = f"{CONTEXTO_CIENTIFICO}\n\nHistórico da conversa atual:\n{historico_texto}\n\nO usuário complementou com a seguinte dúvida ou contestação: '{pergunta_complementar}'. Responda de forma fluida seguindo as regras de avaliação crítica e as fontes científicas."
                 
-                st.session_state.historico_chat.append({
-                    "autor": "assistant", 
-                    "texto": texto_purificado_chat
-                })
+                payload_chat = {
+                    "model": "google/gemini-2.5-flash:free",
+                    "messages": [{"role": "user", "content": prompt_chat}],
+                    "temperature": 0.3
+                }
+                
+                response = requests.post("https://openrouter.ai", headers=headers, data=json.dumps(payload_chat))
+                response_json = response.json()
+                texto_purificado_chat = response_json["choices"][0]["message"]["content"]
+                
+                st.session_state.historico_chat.append({"autor": "assistant", "texto": texto_purificado_chat})
                 st.rerun()
             except Exception as e:
-                st.error(f"Erro no chat local: {str(e)}")
+                st.error(f"Erro no chat: {str(e)}")
 
     st.write("")
     if st.button("🔄 Arquivar Atendimento", use_container_width=True):
