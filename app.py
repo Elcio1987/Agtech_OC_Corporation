@@ -9,7 +9,7 @@ import base64
 st.set_page_config(page_title="AgTech Açaí - Local", page_icon="🌱", layout="centered")
 
 st.title("🌱 AgTech - Consultor Agroflorestal")
-st.caption("Monitoramento Autônomo & Inteligência Conectada (Otimizado para Celular)")
+st.caption("Monitoramento Autônomo & Inteligência Conectada (Powered by Seu PC Local & Llama)")
 
 # --- CONFIGURAÇÃO INVISÍVEL VIA SECRETS DO STREAMLIT ---
 try:
@@ -19,8 +19,8 @@ except Exception:
     st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL e ANYTHINGLLM_API_KEY em Settings > Secrets.")
     st.stop()
 
-# Nome da sua pasta confirmado 100% como agtech na imagem do painel
-SLUG_REAL_DA_PASTA = "agtech"
+# Nome da sua pasta configurado de forma simples no AnythingLLM
+SLUG_DA_SUA_PASTA = "agtech"
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
 if "historico_chat" not in st.session_state:
@@ -39,16 +39,14 @@ def converter_imagem_para_base64(uploaded_file):
 
 st.info("🔄 **Central Ativa:** Conectada ao Servidor Local. Aguardando fotos do campo.")
 
-foto_uploadeada = st.file_uploader(
-    "📸 Tire uma foto ou escolha da galeria do seu celular:", 
-    type=["jpg", "jpeg", "png"]
-)
+# Caixa única de Upload de Foto Real do Celular
+foto_uploadeada = st.file_uploader("📸 Tire uma foto ou escolha da galeria do seu celular:", type=["jpg", "jpeg", "png"])
 
-if foto_uploadeada:
+if foto_uploadeada and len(st.session_state.historico_chat) == 0:
     st.success("✅ Foto carregada na memória do aplicativo com sucesso!")
     
     if st.button("🔍 Enviar Foto para Diagnóstico Real no seu PC", type="primary", use_container_width=True):
-        with st.spinner("Enviando imagem para o seu computador..."):
+        with st.spinner("Enviando imagem para o seu computador e processando pelos artigos..."):
             try:
                 img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 
@@ -57,23 +55,30 @@ if foto_uploadeada:
                     "Content-Type": "application/json"
                 }
                 
-                prompt_comando = f"""
-                [Análise de Imagem anexada via Base64: data:image/jpeg;base64,{img_base64}]
-                
-                Instruções obrigatórias para sua resposta:
-                1. Faça uma avaliação crítica, fluida e interacional com o produtor com base na foto e nos artigos de açaí.
-                2. Apresente os resultados detalhando uma lista de no máximo 5 possíveis protocolos técnicos para corrigir o problema.
+                # Prompt limpo e focado strictly nas regras da Embrapa
+                prompt_comando = """
+                Analise cuidadosamente a imagem que foi anexada a este atendimento e gere um relatório agroflorestal seguindo estas diretrizes obrigatórias:
+                1. Faça uma avaliação crítica, fluida e interacional com o produtor (como um agrônomo de verdade conversando no campo).
+                2. Apresente os resultados detalhando uma lista de no máximo 5 possíveis protocolos técnicos para corrigir o problema. Ordene-os por relevância científica.
                 3. Cite obrigatoriamente de qual artigo ou manual da Embrapa você extraiu a informação e faça uma avaliação crítica se é um periódico sério ou cartilha educativa.
                 4. Se não encontrar o problema nos artigos com certeza absoluta, diga estritamente que não encontrou na base de dados atual e que os desenvolvedores vão atualizar o sistema. Nunca invente dados falsos.
                 """
                 
+                # AJUSTE DE ENGENHARIA MULTIMODAL: Passando o texto e os dados da imagem em estruturas separadas aceitas pela API
                 payload = {
                     "message": prompt_comando,
-                    "mode": "query"
+                    "mode": "query",
+                    "attachments": [
+                        {
+                            "name": "foto_campo.jpg",
+                            "mimeType": "image/jpeg",
+                            "content": img_base64
+                        }
+                    ]
                 }
                 
-                # ROTA CORRIGIDA DA API: Usa a chamada de chats oficial do Workspace interno
-                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspace/{SLUG_REAL_DA_PASTA}/chats"
+                # ROTA COMPATÍVEL COM O SISTEMA DESKTOP INDUSTRIAL
+                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspace/{SLUG_DA_SUA_PASTA}/chat"
                 response = requests.post(url_final, headers=headers, json=payload, timeout=90)
                 
                 if response.status_code != 200:
@@ -118,7 +123,7 @@ if st.session_state.historico_chat:
                     "Content-Type": "application/json"
                 }
                 
-                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspace/{SLUG_REAL_DA_PASTA}/chats"
+                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspace/{SLUG_DA_SUA_PASTA}/chat"
                 payload_chat = {
                     "message": pergunta_complementar,
                     "mode": "query"
