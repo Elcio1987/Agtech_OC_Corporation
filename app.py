@@ -19,23 +19,19 @@ except Exception:
     st.error("⚠️ Configuração pendente nos Secrets do Streamlit. Adicione URL_NGROK_LOCAL e ANYTHINGLLM_API_KEY em Settings > Secrets.")
     st.stop()
 
-# Nome da pasta simplificado que você alterou no AnythingLLM
+# Nome da sua pasta configurado de forma simples no AnythingLLM
 SLUG_DA_SUA_PASTA = "agtech"
 
 # Inicializa o histórico de conversa na memória do celular do produtor se não existir
 if "historico_chat" not in st.session_state:
     st.session_state.historico_chat = []
 
-# Função para converter e comprimir drasticamente a imagem pesada do celular
+# Função para converter e comprimir a imagem pesada do celular
 def converter_imagem_para_base64(uploaded_file):
     image = Image.open(uploaded_file)
-    
-    # Reduz o tamanho físico da foto (Celulares tiram fotos imensas, 600x600 é perfeito para o Llama ver detalhes)
     max_size = (600, 600)
     image.thumbnail(max_size, Image.Resampling.LANCZOS)
-    
     buffered = io.BytesIO()
-    # Salva em JPEG comprimindo a qualidade para 65% (Reduz o arquivo de 15MB para menos de 300KB)
     image.convert("RGB").save(buffered, format="JPEG", quality=65)
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
@@ -43,18 +39,16 @@ def converter_imagem_para_base64(uploaded_file):
 
 st.info("🔄 **Central Ativa:** Conectada ao Servidor Local. Aguardando fotos do campo.")
 
-# Otimizado: Adicionado o parâmetro clear_on_submit e mensagem clara sobre o peso do arquivo
 foto_uploadeada = st.file_uploader(
     "📸 Tire uma foto ou escolha da galeria do seu celular:", 
     type=["jpg", "jpeg", "png"]
 )
 
-# O botão de enviar agora aparece de forma mais visível e persistente na tela do celular
 if foto_uploadeada:
     st.success("✅ Foto carregada na memória do aplicativo com sucesso!")
     
     if st.button("🔍 Enviar Foto para Diagnóstico Real no seu PC", type="primary", use_container_width=True):
-        with st.spinner("Compactando imagem e enviando para o seu computador..."):
+        with st.spinner("Enviando imagem para o seu computador..."):
             try:
                 img_base64 = converter_imagem_para_base64(foto_uploadeada)
                 
@@ -78,8 +72,9 @@ if foto_uploadeada:
                     "mode": "query"
                 }
                 
-                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspaces/{SLUG_DA_SUA_PASTA}/chat"
-                response = requests.post(url_final, headers=headers, json=payload, timeout=90) # Aumentado o timeout para conexões 4G/3G móveis
+                # CORREÇÃO DEFINITIVA DA ROTA INTERNA: workspace (no singular) conforme padrão do app
+                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspace/{SLUG_DA_SUA_PASTA}/chat"
+                response = requests.post(url_final, headers=headers, json=payload, timeout=90)
                 
                 if response.status_code != 200:
                     raise Exception(f"O seu computador rejeitou a mensagem (Erro {response.status_code}). Detalhe: {response.text}")
@@ -123,7 +118,8 @@ if st.session_state.historico_chat:
                     "Content-Type": "application/json"
                 }
                 
-                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspaces/{SLUG_DA_SUA_PASTA}/chat"
+                # AJUSTE DA ROTA NO CHAT CONTÍNUO
+                url_final = f"{URL_NGROK.rstrip('/')}/api/v1/workspace/{SLUG_DA_SUA_PASTA}/chat"
                 payload_chat = {
                     "message": pergunta_complementar,
                     "mode": "query"
